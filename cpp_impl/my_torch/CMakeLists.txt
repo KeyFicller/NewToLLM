@@ -2,6 +2,7 @@ set(SOURCES
     my_torch.h
     my_torch_export.h
     verifier/torch_verifier.cpp
+    brief/torch_breif.cpp
 )
 
 set(CMAKE_PREFIX_PATH ${LIBTORCH_VENDOR_PATH})

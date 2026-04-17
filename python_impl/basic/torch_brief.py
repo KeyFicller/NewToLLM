@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch.autograd import grad
+from torch.utils.data import Dataset, DataLoader
 
 class NeuralNetwork(torch.nn.Module):
     def __init__(self, num_inputs, num_outputs):
@@ -20,6 +21,17 @@ class NeuralNetwork(torch.nn.Module):
     def forward(self, x):
         logits = self.layers(x)
         return logits
+
+class ToyDataset(Dataset):
+    def __init__(self, X, y):
+        self.features = X
+        self.labels = y
+
+    def __getitem__(self, index):
+        return self.features[index], self.labels[index]
+
+    def __len__(self):
+        return self.labels.shape[0]
 
 def brief_torch():
     # Scalar/Vector/Matrix/Tensor
@@ -76,3 +88,30 @@ def brief_torch():
     with torch.no_grad():
         out = torch.softmax(model(X), dim=1)
     print("Neural network output without grad: ", out)
+
+    # Data loading and preprocessing
+    X_train = torch.tensor([
+        [-1.2, 3.1],
+        [-0.9, 2.9],
+        [-0.5, 2.6],
+        [2.3, -1.1],
+        [2.7, -1.5]
+    ])
+    y_train = torch.tensor([0, 0, 0, 1, 1])
+    X_test = torch.tensor([
+        [-0.8, 2.8],
+        [2.6, -1.6],
+    ])
+    y_test = torch.tensor([0, 1])
+    train_ds = ToyDataset(X_train, y_train)
+    test_ds = ToyDataset(X_test, y_test)
+
+    print("len of train_ds: ", len(train_ds))
+    print("len of test_ds: ", len(test_ds))
+
+    torch.manual_seed(1234)
+    train_loader = DataLoader(dataset= train_ds, batch_size=2, shuffle= True, num_workers=0, drop_last=True)
+    test_loader = DataLoader(dataset= test_ds, batch_size=2, shuffle= False, num_workers=0, drop_last=True)
+
+    for idx, (x, y) in enumerate(train_loader):
+        print(f"Batch {idx + 1}: x = {x}, y = {y}")

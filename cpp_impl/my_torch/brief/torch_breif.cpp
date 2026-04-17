@@ -1,6 +1,11 @@
 #include "my_torch.h"
 
+#include <ATen/core/TensorBody.h>
 #include <iostream>
+#include <torch/data.h>
+#include <torch/data/dataloader.h>
+#include <torch/data/dataloader_options.h>
+#include <torch/data/samplers/sequential.h>
 #include <torch/nn/modules/linear.h>
 #include <torch/torch.h>
 
@@ -27,6 +32,20 @@ public:
 };
 
 TORCH_MODULE(NeuralNetwork);
+
+struct ToyDataset : public torch::data::Dataset<ToyDataset> {
+  torch::Tensor m_features;
+  torch::Tensor m_labels;
+
+  ToyDataset(torch::Tensor features, torch::Tensor labels)
+      : m_features(std::move(features)), m_labels(std::move(labels)) {}
+
+  torch::data::Example<> get(size_t index) override {
+    return {m_features[index], m_labels[index]};
+  }
+
+  torch::optional<size_t> size() const override { return m_labels.size(0); }
+};
 
 void brief_torch() {
   // Scalar/Vector/Matrix/Tensor
@@ -102,5 +121,43 @@ void brief_torch() {
     out = torch::softmax(model->forward(X), 1);
   }
   std::cout << "Neural network output without grad: " << out << std::endl;
+
+  // Data loading and preprocessing
+  torch::Tensor X_train = torch::tensor(
+      {{-1.2, 3.1}, {-0.9, 2.9}, {-0.5, 2.6}, {2.3, -1.1}, {2.7, -1.5}});
+  torch::Tensor y_train = torch::tensor({0, 0, 0, 1, 1});
+  torch::Tensor X_test = torch::tensor({{-0.8, 2.8}, {2.6, -1.6}});
+  torch::Tensor y_test = torch::tensor({0, 1});
+  ToyDataset train_ds(X_train, y_train);
+  ToyDataset test_ds(X_test, y_test);
+  std::cout << "len of train_ds: " << train_ds.size().value() << std::endl;
+  std::cout << "len of test_ds: " << test_ds.size().value() << std::endl;
+
+  torch::manual_seed(1234);
+  auto train_loader = torch::data::make_data_loader(
+      std::move(train_ds),
+      torch::data::DataLoaderOptions().batch_size(2).drop_last(true));
+  auto test_loader =
+      torch::data::make_data_loader<torch::data::samplers::SequentialSampler>(
+          std::move(test_ds),
+          torch::data::DataLoaderOptions().batch_size(2).drop_last(true));
+  size_t idx = 0;
+  for (auto &batch : *train_loader) {
+    std::cout << "Batch " << idx << ", size = " << batch.size() << std::endl;
+    for (auto &ex : batch) {
+      std::cout << "Example " << idx << ": x = " << ex.data
+                << ", y = " << ex.target << std::endl;
+    }
+    ++idx;
+  }
+
+  for (auto &batch : *test_loader) {
+    std::cout << "Batch " << idx << ", size = " << batch.size() << std::endl;
+    for (auto &ex : batch) {
+      std::cout << "Example " << idx << ": x = " << ex.data
+                << ", y = " << ex.target << std::endl;
+    }
+    ++idx;
+  }
 }
 } // namespace MyTorch

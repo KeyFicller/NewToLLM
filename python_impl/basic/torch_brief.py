@@ -33,6 +33,20 @@ class ToyDataset(Dataset):
     def __len__(self):
         return self.labels.shape[0]
 
+def compute_accuracy(model, data_loader):
+    model.eval()
+    correct = 0.0
+    total_examples = 0
+    for idx, [features, labels] in enumerate(data_loader):
+        with torch.no_grad():
+            logits = model(features)
+
+        predictions = torch.argmax(logits, dim=1)
+        compare = labels == predictions
+        correct += torch.sum(compare)
+        total_examples += len(features)
+    return (correct / total_examples).item()
+
 def brief_torch():
     # Scalar/Vector/Matrix/Tensor
     tensor0d = torch.tensor(1)
@@ -110,8 +124,46 @@ def brief_torch():
     print("len of test_ds: ", len(test_ds))
 
     torch.manual_seed(1234)
-    train_loader = DataLoader(dataset= train_ds, batch_size=2, shuffle= True, num_workers=0, drop_last=True)
+    train_loader = DataLoader(dataset= train_ds, batch_size=2, shuffle= False, num_workers=0, drop_last=True)
     test_loader = DataLoader(dataset= test_ds, batch_size=2, shuffle= False, num_workers=0, drop_last=True)
 
     for idx, (x, y) in enumerate(train_loader):
         print(f"Batch {idx + 1}: x = {x}, y = {y}")
+    
+    for idx, (x, y) in enumerate(test_loader):
+        print(f"Batch {idx + 1}: x = {x}, y = {y}")
+
+    # Example of training a neural network
+    torch.manual_seed(123)
+    model = NeuralNetwork(num_inputs=2, num_outputs=2)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.5)
+    num_epochs = 4
+    for epoch in range(num_epochs):
+        model.train()
+        for batch_idx, (features, labels) in enumerate(train_loader):
+            logits = model(features)
+
+            loss = F.cross_entropy(logits, labels)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            ### Logging
+            print(f"Epoch: {epoch+1:03d}/{num_epochs:03d}"
+                  f" | Batch: {batch_idx+1:03d}/{len(train_loader):03d}"
+                  f" | Loss: {loss:.2f}")
+
+    model.eval()
+
+    with torch.no_grad():
+        outputs = model(X_train.to(torch.float32))
+    print("Training outputs: ", outputs)
+
+    #torch.set_printoptions(sci_mode=False)
+    proabs = torch.softmax(outputs, dim=1)
+    print("Probabilities: ", proabs)
+    predictions = torch.argmax(proabs, dim=1)
+    print("Predictions: ", predictions)
+    print("Training accuracy:", compute_accuracy(model, train_loader))
+    print("Test accuracy:", compute_accuracy(model, test_loader))

@@ -47,6 +47,35 @@ struct ToyDataset : public torch::data::Dataset<ToyDataset> {
   torch::optional<size_t> size() const override { return m_labels.size(0); }
 };
 
+template <typename Model, typename Loader>
+double compute_accuracy(Model &model, Loader &loader) {
+  model->eval();
+  torch::NoGradGuard no_grad;
+
+  int correct = 0;
+  int total_examples = 0;
+
+  for (auto &batch : *loader) {
+    std::vector<torch::Tensor> features;
+    std::vector<torch::Tensor> labels;
+    for (auto &ex : batch) {
+      features.push_back(ex.data);
+      labels.push_back(ex.target);
+    }
+    auto features_tensor = torch::stack(features).to(torch::kFloat32);
+    auto labels_tensor = torch::stack(labels).to(torch::kLong);
+
+    auto logits = model->forward(features_tensor);
+    auto predictions = torch::argmax(logits, 1);
+
+    auto compare = labels_tensor.eq(predictions);
+    correct += compare.sum().template item<int64_t>();
+    total_examples += features.size();
+  }
+
+  return 1.0 * correct / total_examples;
+}
+
 void brief_torch() {
   // Scalar/Vector/Matrix/Tensor
   torch::Tensor tensor0d = torch::tensor(1);
@@ -134,9 +163,10 @@ void brief_torch() {
   std::cout << "len of test_ds: " << test_ds.size().value() << std::endl;
 
   torch::manual_seed(1234);
-  auto train_loader = torch::data::make_data_loader(
-      std::move(train_ds),
-      torch::data::DataLoaderOptions().batch_size(2).drop_last(true));
+  auto train_loader =
+      torch::data::make_data_loader<torch::data::samplers::SequentialSampler>(
+          std::move(train_ds),
+          torch::data::DataLoaderOptions().batch_size(2).drop_last(true));
   auto test_loader =
       torch::data::make_data_loader<torch::data::samplers::SequentialSampler>(
           std::move(test_ds),
@@ -159,5 +189,52 @@ void brief_torch() {
     }
     ++idx;
   }
+
+  torch::manual_seed(123);
+  NeuralNetwork example_model(2, 2);
+  auto optimizer = torch::optim::SGD(example_model->parameters(), 0.5);
+  int num_epochs = 4;
+  int batch_idx = 0;
+  for (int epoch = 0; epoch < num_epochs; ++epoch) {
+    example_model->train();
+
+    for (auto &batch : *train_loader) {
+      std::vector<torch::Tensor> features;
+      std::vector<torch::Tensor> labels;
+      for (auto &ex : batch) {
+        features.push_back(ex.data);
+        labels.push_back(ex.target);
+      }
+      auto features_tensor = torch::stack(features).to(torch::kFloat32);
+      auto labels_tensor = torch::stack(labels).to(torch::kLong);
+      auto logits = example_model->forward(features_tensor);
+      auto loss = torch::nn::functional::cross_entropy(logits, labels_tensor);
+
+      optimizer.zero_grad();
+      loss.backward();
+      optimizer.step();
+
+      std::cout << "Epoch: " << epoch << ", Batch: " << batch_idx
+                << ", Loss: " << std::fixed << std::setprecision(2)
+                << loss.item<float>() << std::endl;
+      ++batch_idx;
+    }
+  }
+
+  example_model->eval();
+  torch::Tensor outputs;
+  {
+    torch::NoGradGuard no_grad;
+    outputs = example_model->forward(X_train.to(torch::kFloat32));
+    std::cout << "Training outputs: " << outputs << std::endl;
+  }
+  auto proabs = torch::softmax(outputs, 1);
+  std::cout << "Probabilities: " << proabs << std::endl;
+  auto predictions = torch::argmax(proabs, 1);
+  std::cout << "Predictions: " << predictions << std::endl;
+  std::cout << "Training accuracy: "
+            << compute_accuracy(example_model, train_loader) << std::endl;
+  std::cout << "Test accuracy: " << compute_accuracy(example_model, test_loader)
+            << std::endl;
 }
 } // namespace MyTorch

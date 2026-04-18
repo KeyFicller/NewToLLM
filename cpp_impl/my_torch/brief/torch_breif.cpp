@@ -1,6 +1,7 @@
 #include "my_torch.h"
 
 #include <ATen/core/TensorBody.h>
+#include <filesystem>
 #include <iostream>
 #include <torch/data.h>
 #include <torch/data/dataloader.h>
@@ -235,6 +236,20 @@ void brief_torch() {
   std::cout << "Training accuracy: "
             << compute_accuracy(example_model, train_loader) << std::endl;
   std::cout << "Test accuracy: " << compute_accuracy(example_model, test_loader)
+            << std::endl;
+
+  // Model saving and loading
+  // ensure cwd : {workspaceFolder}
+  const std::filesystem::path temp_dir = "cpp_impl/.temp";
+  std::filesystem::create_directories(temp_dir);
+  const std::filesystem::path model_path = temp_dir / "model.pth";
+  torch::save(example_model, model_path.string());
+  NeuralNetwork loaded_model(2, 2);
+  torch::load(loaded_model, model_path.string());
+  std::cout << "Model loaded: " << loaded_model << std::endl;
+  std::cout << "Training accuracy: "
+            << compute_accuracy(loaded_model, train_loader) << std::endl;
+  std::cout << "Test accuracy: " << compute_accuracy(loaded_model, test_loader)
             << std::endl;
 }
 } // namespace MyTorch

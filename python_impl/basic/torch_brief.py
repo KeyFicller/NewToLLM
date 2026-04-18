@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import grad
 from torch.utils.data import Dataset, DataLoader
+from pathlib import Path
 
 class NeuralNetwork(torch.nn.Module):
     def __init__(self, num_inputs, num_outputs):
@@ -165,5 +166,15 @@ def brief_torch():
     print("Probabilities: ", proabs)
     predictions = torch.argmax(proabs, dim=1)
     print("Predictions: ", predictions)
+    print("Training accuracy:", compute_accuracy(model, train_loader))
+    print("Test accuracy:", compute_accuracy(model, test_loader))
+
+    # Model saving and loading
+    temp_dir = Path(__file__).resolve().parents[1] / ".temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    model_path = temp_dir / "model.pth"
+    torch.save(model.state_dict(), model_path)
+    model.load_state_dict(torch.load(model_path))
+    print("Model loaded: ", model)
     print("Training accuracy:", compute_accuracy(model, train_loader))
     print("Test accuracy:", compute_accuracy(model, test_loader))

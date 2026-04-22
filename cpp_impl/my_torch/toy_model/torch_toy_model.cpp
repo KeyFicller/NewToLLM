@@ -30,15 +30,14 @@ std::vector<uint64_t> encode_prompt_with_tiktoken(const std::string &prompt,
     return {15496, 11, 314, 716};
   }
 
-  tokenizers::Tiktoken tokenizer;
-  const auto load_error = tokenizer.load(tokenizer_path.string());
-  if (load_error != tokenizers::Error::Ok) {
+  auto* tokenizer = get_tokenizer(tokenizer_path.string());
+  if (tokenizer == nullptr) {
     std::cout << "[toy_model] failed to load tiktoken file: " << tokenizer_path
               << ", fallback to hardcoded token ids.\n";
     return {15496, 11, 314, 716};
   }
 
-  auto encode_result = tokenizer.encode(prompt, 0, 0);
+  auto encode_result = tokenizer->encode(prompt, 0, 0);
   if (!encode_result.ok()) {
     std::cout << "[toy_model] failed to encode prompt with tiktoken, fallback "
                  "to hardcoded token ids.\n";
@@ -69,8 +68,8 @@ std::string decode_tokens_with_tiktoken(const std::vector<uint64_t> &token_ids,
     return "<decode skipped: tokenizer file missing>";
   }
 
-  tokenizers::Tiktoken tokenizer;
-  if (tokenizer.load(tokenizer_path.string()) != tokenizers::Error::Ok) {
+  auto* tokenizer = get_tokenizer(tokenizer_path.string());
+  if (tokenizer == nullptr) {
     return "<decode skipped: tokenizer load failed>";
   }
 
@@ -78,7 +77,7 @@ std::string decode_tokens_with_tiktoken(const std::vector<uint64_t> &token_ids,
   uint64_t prev = 0;
   bool has_prev = false;
   for (auto token : token_ids) {
-    auto decode_result = tokenizer.decode(has_prev ? prev : token, token, true);
+    auto decode_result = tokenizer->decode(has_prev ? prev : token, token, true);
     if (!decode_result.ok()) {
       continue;
     }

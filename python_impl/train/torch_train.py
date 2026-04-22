@@ -4,7 +4,7 @@ from python_impl.toy_model.torch_toy_model import ToyModel
 from python_impl.toy_model.config import ToyModelConfig
 
 import tiktoken
-from python_impl.toy_model.torch_toy_model import generate_text_simple
+from python_impl.toy_model.torch_toy_model import generate_text_simple, generate_text_advanced
 
 import python_impl.train.data_utils as data_utils
 
@@ -26,10 +26,17 @@ def generate_and_print_sample(model, tokenizer, device, start_context):
     model.eval()
     context_size = model.pos_emb.weight.shape[0]
     encoded = text_to_token_ids(start_context, tokenizer).to(device)
+
     with torch.no_grad():
         token_ids = generate_text_simple(model, encoded, max_new_tokens=50, context_length=context_size)
     decoded = token_ids_to_text(token_ids, tokenizer)
-    logger.info("[train] Generated text: %s", decoded.replace("\n", " "))
+    logger.info("[train] Generated text simple: %s", decoded.replace("\n", " "))
+
+    with torch.no_grad():
+        token_ids = generate_text_advanced(model, encoded, max_new_tokens=50, context_length=context_size, temperature=1.4, top_k=25, eos_id=None)
+    decoded = token_ids_to_text(token_ids, tokenizer)
+    logger.info("[train] Generated text advanced: %s", decoded.replace("\n", " "))
+    
     model.train()
 
 def train_model_simple(

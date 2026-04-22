@@ -29,4 +29,13 @@ torch::Tensor generate_text_simple(
     int64_t max_new_tokens,
     int64_t context_length);
 
+torch::Tensor generate_text_advanced(
+    ToyModel& model,
+    torch::Tensor idx,
+    int64_t max_new_tokens,
+    int64_t context_length,
+    double temperature = 0.0,
+    c10::optional<int64_t> top_k = c10::nullopt,
+    c10::optional<int64_t> eos_id = c10::nullopt);
+
 } // namespace MyTorch

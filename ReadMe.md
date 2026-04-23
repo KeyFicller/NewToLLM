@@ -12,17 +12,18 @@ This project explores LLM-related implementation from scratch using Torch in bot
 
 ## Environment Setup
 
-### 1) Python (PyTorch) 
+### 1) Python (PyTorch)
 
-better between 3.9 - 3.11
-
-Install PyTorch in your active Python environment:
+Requirements:
 
 ```shell
-pip install torch
+pip install torch          # Basic
+pip install transformers   # Used to Load GPT2
 ```
 
 ### 2) C++ (LibTorch, macOS)
+
+Requirements:
 
 Download LibTorch from the official PyTorch page:
 

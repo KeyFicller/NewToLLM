@@ -18,17 +18,17 @@ ToyMultiHeadAttentionImpl::ToyMultiHeadAttentionImpl(
     : d_out_(d_out),
       n_heads_(n_heads),
       d_head_(d_out / n_heads),
-      w_query(register_module(
-          "w_query",
+      W_query(register_module(
+          "W_query",
           torch::nn::Linear(torch::nn::LinearOptions(d_in, d_out).bias(qkv_bias)))),
-      w_key(register_module(
-          "w_key",
+      W_key(register_module(
+          "W_key",
           torch::nn::Linear(torch::nn::LinearOptions(d_in, d_out).bias(qkv_bias)))),
-      w_value(register_module(
-          "w_value",
+      W_value(register_module(
+          "W_value",
           torch::nn::Linear(torch::nn::LinearOptions(d_in, d_out).bias(qkv_bias)))),
       out_proj(register_module("out_proj", torch::nn::Linear(d_out, d_out))),
-      dropout(register_module("dropout", torch::nn::Dropout(drop_rate))) {
+      drop_out(register_module("drop_out", torch::nn::Dropout(drop_rate))) {
   TORCH_CHECK(d_out % n_heads == 0, "d_out must be divisible by n_heads");
   auto mask =
       torch::triu(torch::ones({context_length, context_length}, torch::kFloat32), 1);
@@ -41,9 +41,9 @@ torch::Tensor ToyMultiHeadAttentionImpl::forward(const torch::Tensor& x) {
   const auto batch_size = x.size(0);
   const auto n_tokens = x.size(1);
 
-  auto keys = w_key(x);
-  auto queries = w_query(x);
-  auto values = w_value(x);
+  auto keys = W_key(x);
+  auto queries = W_query(x);
+  auto values = W_value(x);
 
   keys = keys.view({batch_size, n_tokens, n_heads_, d_head_}).transpose(1, 2);
   queries = queries.view({batch_size, n_tokens, n_heads_, d_head_}).transpose(1, 2);
@@ -58,7 +58,7 @@ torch::Tensor ToyMultiHeadAttentionImpl::forward(const torch::Tensor& x) {
 
   auto scale = std::sqrt(static_cast<double>(keys.size(-1)));
   auto attn_weights = torch::softmax(attn_scores / scale, -1);
-  attn_weights = dropout(attn_weights);
+  attn_weights = drop_out(attn_weights);
 
   auto context = torch::matmul(attn_weights, values).transpose(1, 2);
   context = context.contiguous().view({batch_size, n_tokens, d_out_});
@@ -103,20 +103,20 @@ ToyTransformerBlockImpl::ToyTransformerBlockImpl(const ToyModelConfig& cfg)
       ff(register_module("ff", ToyFeedForward(cfg))),
       norm1(register_module("norm1", ToyLayerNorm(cfg.emb_dim))),
       norm2(register_module("norm2", ToyLayerNorm(cfg.emb_dim))),
-      dropout(register_module("dropout", torch::nn::Dropout(cfg.drop_rate))) {}
+      drop_out(register_module("drop_out", torch::nn::Dropout(cfg.drop_rate))) {}
 
 torch::Tensor ToyTransformerBlockImpl::forward(const torch::Tensor& x_in) {
   auto x = x_in;
   auto shortcut = x;
   x = norm1(x);
   x = att(x);
-  x = dropout(x);
+  x = drop_out(x);
   x = x + shortcut;
 
   shortcut = x;
   x = norm2(x);
   x = ff(x);
-  x = dropout(x);
+  x = drop_out(x);
   x = x + shortcut;
   return x;
 }

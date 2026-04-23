@@ -24,11 +24,11 @@ struct ToyMultiHeadAttentionImpl : torch::nn::Module {
   int64_t n_heads_;
   int64_t d_head_;
   // Every submodule should be initialized with `{nullptr}` and later registered.
-  torch::nn::Linear w_query{nullptr};
-  torch::nn::Linear w_key{nullptr};
-  torch::nn::Linear w_value{nullptr};
+  torch::nn::Linear W_query{nullptr};
+  torch::nn::Linear W_key{nullptr};
+  torch::nn::Linear W_value{nullptr};
   torch::nn::Linear out_proj{nullptr};
-  torch::nn::Dropout dropout{nullptr};
+  torch::nn::Dropout drop_out{nullptr};
 };
 TORCH_MODULE(ToyMultiHeadAttention);
 
@@ -58,7 +58,7 @@ struct ToyTransformerBlockImpl : torch::nn::Module {
   ToyFeedForward ff{nullptr};
   ToyLayerNorm norm1{nullptr};
   ToyLayerNorm norm2{nullptr};
-  torch::nn::Dropout dropout{nullptr};
+  torch::nn::Dropout drop_out{nullptr};
 };
 TORCH_MODULE(ToyTransformerBlock);
 

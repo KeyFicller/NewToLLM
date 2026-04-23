@@ -38,7 +38,7 @@ class ToyMultiHeadAttention(nn.Module):
 
         # Attention score for every token pair.
         attn_scores = queries @ keys.transpose(2, 3)
-        mask_bool = self.mask.bool()[:n_tokens, :n_tokens]
+        mask_bool = self.mask[:n_tokens, :n_tokens].to(dtype=torch.bool)
         attn_scores.masked_fill_(mask_bool, float("-inf"))
 
         # Scaled softmax to get attention probabilities.

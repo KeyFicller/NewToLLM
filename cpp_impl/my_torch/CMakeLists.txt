@@ -6,6 +6,7 @@ set(SOURCES
     toy_model/model.cpp
     toy_model/transformer.cpp
     toy_model/torch_toy_model.cpp
+    load_model/torch_load_model.cpp
     train/data_utils.cpp
     train/torch_train.cpp
 )

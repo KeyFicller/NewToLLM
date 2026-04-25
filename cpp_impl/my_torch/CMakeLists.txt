@@ -9,6 +9,8 @@ set(SOURCES
     load_model/torch_load_model.cpp
     train/data_utils.cpp
     train/torch_train.cpp
+    fine_tuning/fine_tuning_classify.cpp
+    fine_tuning/torch_fine_tuning.cpp
 )
 
 set(CMAKE_PREFIX_PATH ${LIBTORCH_VENDOR_PATH})

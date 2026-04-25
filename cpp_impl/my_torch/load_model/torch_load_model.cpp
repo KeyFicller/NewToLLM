@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <iostream>
 #include <pytorch/tokenizers/tiktoken.h>
+#include <stdexcept>
 #include <torch/script.h>
 #include <torch/torch.h>
 
@@ -116,6 +117,25 @@ generate_text_scripted(torch::jit::script::Module &model, torch::Tensor idx,
 
 } // namespace
 
+torch::jit::script::Module load_saved_toy_model_jit() {
+  const auto scripted_path = resolve_scripted_model_path();
+  if (scripted_path.empty()) {
+    throw std::runtime_error(
+        "[load_model] TorchScript file not found in cpp_impl/.temp or "
+        "python_impl/.temp");
+  }
+
+  try {
+    auto scripted_model = torch::jit::load(scripted_path.string());
+    std::cout << "[load_model] Loaded TorchScript from: "
+              << scripted_path.string() << '\n';
+    return scripted_model;
+  } catch (const c10::Error &e) {
+    throw std::runtime_error("[load_model] failed to load TorchScript: " +
+                             std::string(e.msg()));
+  }
+}
+
 void load_model_torch() {
   const GenerationOptions gen_opts;
   auto encoded_ids = encode_prompt(gen_opts.prompt);
@@ -133,7 +153,7 @@ void load_model_torch() {
   const auto scripted_path = resolve_scripted_model_path();
   if (!scripted_path.empty()) {
     try {
-      auto scripted_model = torch::jit::load(scripted_path.string());
+      auto scripted_model = load_saved_toy_model_jit();
       scripted_model.eval();
       torch::NoGradGuard no_grad;
       auto out = generate_text_scripted(
@@ -144,44 +164,12 @@ void load_model_torch() {
                                   scripted_path.string(),
                               out);
       return;
-    } catch (const c10::Error &e) {
+    } catch (const std::exception &e) {
       std::cout << "[load_model] failed to load TorchScript from "
                 << scripted_path << '\n';
-      std::cout << e.msg() << '\n';
+      std::cout << e.what() << '\n';
     }
   }
-
-  // Fallback path: load state_dict (.pth) into LibTorch model.
-  const auto model_path = resolve_state_dict_path();
-  if (model_path.empty()) {
-    std::cout << "[load_model] model file not found in cpp_impl/.temp or "
-                 "python_impl/.temp\n";
-    return;
-  }
-
-  ToyModelConfig cfg;
-  cfg.qkv_bias = true;
-  ToyModel model(cfg);
-
-  try {
-    torch::serialize::InputArchive archive;
-    archive.load_from(model_path.string());
-    model->load(archive);
-  } catch (const c10::Error &e) {
-    std::cout << "[load_model] failed to load state_dict model from "
-              << model_path << '\n';
-    std::cout << e.msg() << '\n';
-    return;
-  }
-
-  model->eval();
-  torch::NoGradGuard no_grad;
-  auto out = generate_text_advanced(
-      model, idx, gen_opts.max_new_tokens, cfg.context_length,
-      /*temperature=*/0.0, c10::nullopt, gen_opts.eos_id);
-
-  print_generation_output(
-      "[load_model] Loaded state_dict from: " + model_path.string(), out);
 }
 
 } // namespace MyTorch

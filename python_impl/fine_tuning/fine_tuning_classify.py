@@ -1,7 +1,7 @@
 import torch
 import tiktoken
 from torch.optim import optimizer
-from python_impl.fine_tuning.utils import import_pretrained_model
+from python_impl.fine_tuning.utils import import_pretrained_model, random_split
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
@@ -43,15 +43,6 @@ def create_balanced_dataset(df):
     )
     balanced_df = pd.concat([ham_subset, df[df["Label"] == "spam"]])
     return balanced_df
-
-# Split the data to train, validate and test
-def random_split(df, tFrac, vFrac):
-    # Shuffle
-    df = df.sample(frac = 1, random_state=123).reset_index(drop=True)
-    tEnd = int(len(df) * tFrac)
-    vEnd = tEnd + int(len(df) * vFrac)
-    
-    return df[:tEnd], df[tEnd:vEnd], df[vEnd:]
 
 # Load dataset from tsc file
 def prepare_dataset():

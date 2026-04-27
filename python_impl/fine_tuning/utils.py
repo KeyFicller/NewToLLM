@@ -16,3 +16,13 @@ def import_pretrained_model():
     model.load_state_dict(torch.load(state_dict_path))
 
     return model
+
+# Split the data to train, validate and test
+def random_split(df, tFrac, vFrac, shuffle=True):
+    # Shuffle
+    if shuffle:
+        df = df.sample(frac = 1, random_state=123).reset_index(drop=True)
+    tEnd = int(len(df) * tFrac)
+    vEnd = tEnd + int(len(df) * vFrac)
+    
+    return df[:tEnd], df[tEnd:vEnd], df[vEnd:]

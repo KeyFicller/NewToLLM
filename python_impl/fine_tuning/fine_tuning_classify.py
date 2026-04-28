@@ -1,6 +1,5 @@
 import torch
 import tiktoken
-from torch.optim import optimizer
 from python_impl.fine_tuning.utils import (
     import_pretrained_model,
     random_split,
@@ -8,7 +7,6 @@ from python_impl.fine_tuning.utils import (
 )
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
-import torch.nn as nn
 
 class ClassifyDataset(Dataset):
     def __init__(self, df, tokenizer, max_length = None, pad_token_id = 50256):

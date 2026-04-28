@@ -1,9 +1,6 @@
-from dis import Instruction
 import json
-import os
 
 import tiktoken
-from torch.utils import data
 from python_impl.fine_tuning.utils import random_split, train_model_simple
 from torch.utils.data import Dataset, DataLoader
 import torch
@@ -13,6 +10,7 @@ from python_impl.toy_model.torch_toy_model import generate_text_advanced
 from transformers import AutoTokenizer
 from python_impl.train.data_utils import calc_loss_loader, calc_loss_batch
 from pathlib import Path
+from python_impl.utils.torch_utils import decl_device
 
 
 class HFTokenizerAdapter:
@@ -35,29 +33,24 @@ def build_gpt2_tokenizer():
         return HFTokenizerAdapter(hf_tokenizer)
 
 
-def decide_device():
-    if torch.backends.mps.is_available():
-        return torch.device("mps")
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    return torch.device("cpu")
-
 def load_file(path):
     with open(path, "r", encoding="utf-8") as fin:
         data = json.load(fin)
 
     return data
 
+
 def format_input(entry):
-    instruction_text = ( 
-        f"Below is an instruction that describes a task. " 
-        f"Write a response that appropriately completes the request." 
-        f"\n\n### Instruction:\n{entry['instruction']}" 
-    ) 
-    input_text = ( 
-        f"\n\n### Input:\n{entry['input']}" if entry["input"] else "" 
-    ) 
+    instruction_text = (
+        f"Below is an instruction that describes a task. "
+        f"Write a response that appropriately completes the request."
+        f"\n\n### Instruction:\n{entry['instruction']}"
+    )
+    input_text = (
+        f"\n\n### Input:\n{entry['input']}" if entry["input"] else ""
+    )
     return instruction_text + input_text
+
 
 def format_output(entry):
     response_test = f"\n\n### Response:\n{entry['output']}"
@@ -66,6 +59,7 @@ def format_output(entry):
 
 def build_prompt_for_generation(entry):
     return f"{format_input(entry)}\n\n### Response:\n"
+
 
 class InstructionDataset(Dataset):
     def __init__(self, raw_data, tokenizer):
@@ -76,15 +70,16 @@ class InstructionDataset(Dataset):
             response = format_output(entry)
             full_text = instruction_plus_input + response
             self.encoded_text.append(tokenizer.encode(full_text))
-    
+
     def __getitem__(self, index):
         return self.encoded_text[index]
-    
+
     def __len__(self):
         return len(self.data)
 
-def custom_collate_fn(batch, pad_token_id=50256, ignore_index=-100, allowed_max_length=None,device="cpu"):
-    batch_max_length = max(len(item)+1 for item in batch)
+
+def custom_collate_fn(batch, pad_token_id=50256, ignore_index=-100, allowed_max_length=None, device="cpu"):
+    batch_max_length = max(len(item) + 1 for item in batch)
     inputs_lst, targets_lst = [], []
     for item in batch:
         new_item = item.copy()
@@ -111,6 +106,7 @@ def custom_collate_fn(batch, pad_token_id=50256, ignore_index=-100, allowed_max_
     targets_tensor = torch.stack(targets_lst).to(device)
     return inputs_tensor, targets_tensor
 
+
 def fine_tuning_instruction():
     data = load_file("assets/instruction-data.json")
     print("[fine_tuning] Number of entries: ", len(data))
@@ -130,7 +126,7 @@ def fine_tuning_instruction():
     batch = (inputs_1, inputs_2, inputs_3)
     print("[fine_tuning] Collate fn sample:", custom_collate_fn(batch))
 
-    device = decide_device()
+    device = torch.device(decl_device())
 
     customized_collate_fn = partial(
         custom_collate_fn, device=device, allowed_max_length=1024
@@ -158,6 +154,7 @@ def fine_tuning_instruction():
     expected_response = test_entry["output"]
     prompt_ids = tokenizer.encode(prompt_text)
     print("[fine_tuning] Test prompt: ", prompt_text)
+    print("[fine_tuning] Expected response: ", expected_response)
     input_ids = torch.tensor(prompt_ids).unsqueeze(0).to(device)
     output_ids = generate_text_advanced(
         model,
@@ -171,7 +168,6 @@ def fine_tuning_instruction():
     full_output_text = tokenizer.decode(output_ids[0].tolist())
     generated_response = full_output_text[len(prompt_text):]
     print("[fine_tuning] Unfine-tuned model response: ", generated_response)
-    print("[fine_tuning] Expected response: ", expected_response)
 
     model.eval()
     with torch.no_grad():
@@ -215,7 +211,6 @@ def fine_tuning_instruction():
     full_output_text = tokenizer.decode(output_ids[0].tolist())
     generated_response = full_output_text[len(prompt_text):]
     print("[fine_tuning] Fine-tuned model response: ", generated_response)
-    print("[fine_tuning] Expected response: ", expected_response)
 
     # Save the model
     temp_dir = Path(__file__).resolve().parents[1] / ".temp"

@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 from python_impl.toy_model.torch_toy_model import ToyModel
 from python_impl.toy_model.config import ToyModelConfig
 

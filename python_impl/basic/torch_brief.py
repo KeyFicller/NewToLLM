@@ -148,7 +148,6 @@ def brief_torch():
         model.train()
         for batch_idx, (features, labels) in enumerate(train_loader):
             logits = model(features)
-
             loss = F.cross_entropy(logits, labels)
 
             optimizer.zero_grad()
@@ -167,9 +166,9 @@ def brief_torch():
     print("Training outputs: ", outputs)
 
     #torch.set_printoptions(sci_mode=False)
-    proabs = torch.softmax(outputs, dim=1)
-    print("Probabilities: ", proabs)
-    predictions = torch.argmax(proabs, dim=1)
+    probs = torch.softmax(outputs, dim=1)
+    print("Probabilities: ", probs)
+    predictions = torch.argmax(probs, dim=1)
     print("Predictions: ", predictions)
     print("Training accuracy:", compute_accuracy(model, train_loader))
     print("Test accuracy:", compute_accuracy(model, test_loader))

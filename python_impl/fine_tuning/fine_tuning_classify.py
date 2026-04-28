@@ -47,10 +47,10 @@ def create_balanced_dataset(df):
 # Load dataset from tsc file
 def prepare_dataset():
     df = pd.read_csv("assets/SMSSpamCollection.tsv", sep="\t", header=None, names=["Label", "Text"])
-    print("Raw data:\n", df["Label"].value_counts())
+    print("[fine_tuning] Raw data:\n", df["Label"].value_counts())
 
     balanced_df = create_balanced_dataset(df)
-    print("Balanced data:\n", balanced_df["Label"].value_counts())
+    print("[fine_tuning] Balanced data:\n", balanced_df["Label"].value_counts())
 
     balanced_df["Label"] = balanced_df["Label"].map({"ham": 0, "spam": 1})
 
@@ -190,13 +190,13 @@ def train_classifier_simple(model,tLoader,vLoader,optimizer,device,num_epochs,ev
                 tLoss, vLoss = evaluate_model(model, tLoader, vLoader, device, eval_iter)
                 tLosses.append(tLoss)
                 vLosses.append(vLoss)
-                print(f"Ep {epoch + 1} (Step {global_step: 06d}): "
+                print(f"[fine_tuning] Ep {epoch + 1} (Step {global_step: 06d}): "
                       f"Train loss {tLoss:.3f}, Validate loss {vLoss:.3f}")
         
         tAccuracy = calc_accuracy_loader(tLoader, model, device, num_batches=eval_iter)
         vAccuracy = calc_accuracy_loader(vLoader, model, device, num_batches=eval_iter)
 
-        print(f"Train accuracy : {tAccuracy * 100: .2f}%, Validate accuracy: {vAccuracy * 100: .2f}%")
+        print(f"[fine_tuning] Train accuracy : {tAccuracy * 100: .2f}%, Validate accuracy: {vAccuracy * 100: .2f}%")
 
 def evaluate_model(model, tLoader, vLoader, device, eval_iter):
     model.eval()
@@ -231,4 +231,4 @@ def fine_tuning_classify():
     train_classifier_simple(model, tLoader, vLoader, optimizer, device, num_epochs, eval_freq=50, eval_iter=5)
 
     model.eval()
-    print(f"Test accuracy : {calc_loss_loader(pLoader, model, device, num_batches=5) * 100:.2f}%")
+    print(f"[fine_tuning] Test accuracy : {calc_loss_loader(pLoader, model, device, num_batches=5) * 100:.2f}%")

@@ -81,7 +81,7 @@ def load_public_model_to_toy_model():
         toy_logits = toy_model(inputs["input_ids"])
 
     max_abs_diff = (hf_logits - toy_logits).abs().max().item()
-    print(f"max_abs_diff(logits) = {max_abs_diff:.6e}")
+    print(f"[load_model] max_abs_diff(logits) = {max_abs_diff:.6e}")
 
     with torch.no_grad():
         output_ids = hf_model.generate(
@@ -89,7 +89,7 @@ def load_public_model_to_toy_model():
             max_new_tokens=30,
             do_sample=False,
         )
-    print("HF model output: ", tokenizer.decode(output_ids[0], skip_special_tokens=True))
+    print(f"[load_model] HF model output: {tokenizer.decode(output_ids[0], skip_special_tokens=True)}")
 
 
     tokenizer = tiktoken.get_encoding("gpt2")
@@ -106,7 +106,7 @@ def load_public_model_to_toy_model():
         max_new_tokens=30,
         context_length=1024, # TODO: get from config
     )
-    print("Toy model output: ", tokenizer.decode(output_ids.squeeze(0).tolist()))
+    print(f"[load_model] Toy model output: {tokenizer.decode(output_ids.squeeze(0).tolist())}")
 
     temp_dir = Path(__file__).resolve().parents[1] / ".temp"
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -117,8 +117,8 @@ def load_public_model_to_toy_model():
     scripted_model = torch.jit.script(toy_model)
     scripted_path = temp_dir / "toy_model_from_gpt2.pt"
     scripted_model.save(str(scripted_path))
-    print("Saved state_dict to:", state_dict_path)
-    print("Saved TorchScript to:", scripted_path)
+    print(f"[load_model] Saved state_dict to: {state_dict_path}")
+    print(f"[load_model] Saved TorchScript to: {scripted_path}")
 
 def load_model_torch():
     load_public_model_to_toy_model()

@@ -1,11 +1,7 @@
-import logging
-
 import torch
 import python_impl.toy_model.config as cfg
 import tiktoken
 from python_impl.toy_model.model import ToyModel
-
-logger = logging.getLogger(__name__)
 
 # This text generate function simply choose the highest probability token for each step.
 def generate_text_simple(model, idx, max_new_tokens, context_length):
@@ -82,10 +78,10 @@ def toy_model_torch():
     input_context = "Hello, I am"
     tokenizer = tiktoken.get_encoding("gpt2")
     encoded = tokenizer.encode(input_context)
-    logger.info("Encoded prompt tokens: %s", encoded)
+    print(f"[toy_model] Encoded prompt tokens: {encoded}")
     # Add batch dimension so shape becomes [1, seq_len].
     encoded_tensor = torch.tensor(encoded).unsqueeze(0)
-    logger.info("Encoded tensor shape: %s", tuple(encoded_tensor.shape))
+    print(f"[toy_model] Encoded tensor shape: {tuple(encoded_tensor.shape)}")
 
     # Switch to evaluation mode for generation.
     model.eval()
@@ -97,9 +93,9 @@ def toy_model_torch():
         max_new_tokens=6,
         context_length=cfg.ToyModelConfig["context_length"],
     )
-    logger.info("Generated token ids: %s", output_ids.tolist())
-    logger.info("Generated sequence length: %d", len(output_ids[0]))
+    print(f"[toy_model] Generated token ids: {output_ids.tolist()}")
+    print(f"[toy_model] Generated sequence length: {len(output_ids[0])}")
 
     # Convert token ids back to human-readable text.
     decoded_text = tokenizer.decode(output_ids.squeeze(0).tolist())
-    logger.info("Decoded text: %s", decoded_text)
+    print(f"[toy_model] Decoded text: {decoded_text}")

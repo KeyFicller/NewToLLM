@@ -11,6 +11,7 @@ set(SOURCES
     train/torch_train.cpp
     fine_tuning/fine_tuning_classify.cpp
     fine_tuning/torch_fine_tuning.cpp
+    utils/torch_utils.cpp
 )
 
 set(CMAKE_PREFIX_PATH ${LIBTORCH_VENDOR_PATH})

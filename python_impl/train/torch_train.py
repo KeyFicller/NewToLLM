@@ -8,10 +8,6 @@ from python_impl.toy_model.torch_toy_model import generate_text_simple, generate
 
 import python_impl.train.data_utils as data_utils
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 def text_to_token_ids(text, tokenizer):
     encoded = tokenizer.encode(text, allowed_special={'<|endoftext|>'})
     encoded_tensor = torch.tensor(encoded).unsqueeze(0)
@@ -30,12 +26,12 @@ def generate_and_print_sample(model, tokenizer, device, start_context):
     with torch.no_grad():
         token_ids = generate_text_simple(model, encoded, max_new_tokens=50, context_length=context_size)
     decoded = token_ids_to_text(token_ids, tokenizer)
-    logger.info("[train] Generated text simple: %s", decoded.replace("\n", " "))
+    print(f"[train] Generated text simple: {decoded.replace('\n', ' ')}")
 
     with torch.no_grad():
         token_ids = generate_text_advanced(model, encoded, max_new_tokens=50, context_length=context_size, temperature=1.4, top_k=25, eos_id=None)
     decoded = token_ids_to_text(token_ids, tokenizer)
-    logger.info("[train] Generated text advanced: %s", decoded.replace("\n", " "))
+    print(f"[train] Generated text advanced: {decoded.replace('\n', ' ')}")
     
     model.train()
 
@@ -81,12 +77,9 @@ def train_model_simple(
                 val_losses.append(val_loss)
                 track_tokens_seen.append(tokens_seen)
 
-                logger.info(
-                    "[train] Epoch %d, Step %d, Train Loss: %.4f, Val Loss: %.4f",
-                    epoch + 1,
-                    global_step,
-                    train_loss,
-                    val_loss,
+                print(
+                    f"[train] Epoch {epoch + 1}, Step {global_step}, "
+                    f"Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}"
                 )
 
         # Qualitative sample generation during training.
@@ -109,7 +102,7 @@ def train_torch():
 
     token_ids = generate_text_simple(model, text_to_token_ids(start_context, tokenizer), max_new_tokens=10, context_length=cfg["context_length"])
     generated_text = token_ids_to_text(token_ids, tokenizer)
-    logger.info("[train] Generated text without training: %s", generated_text.replace("\n", " "))
+    print(f"[train] Generated text without training: {generated_text.replace('\n', ' ')}")
 
     file_path = "assets/the-verdict.txt"
     with open(file_path, "r", encoding="utf-8") as file:
@@ -127,17 +120,13 @@ def train_torch():
     val_samples = len(val_loader.dataset)
     train_batches = len(train_loader)
     val_batches = len(val_loader)
-    logger.info(
-        "[train] Train loader samples: %d, batches: %d, batch_size: %d",
-        train_samples,
-        train_batches,
-        train_loader.batch_size,
+    print(
+        f"[train] Train loader samples: {train_samples}, batches: {train_batches}, "
+        f"batch_size: {train_loader.batch_size}"
     )
-    logger.info(
-        "[train] Validation loader samples: %d, batches: %d, batch_size: %d",
-        val_samples,
-        val_batches,
-        val_loader.batch_size,
+    print(
+        f"[train] Validation loader samples: {val_samples}, batches: {val_batches}, "
+        f"batch_size: {val_loader.batch_size}"
     )
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.0004, weight_decay=0.1)

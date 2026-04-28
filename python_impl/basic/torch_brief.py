@@ -3,6 +3,11 @@ import torch.nn.functional as F
 from torch.autograd import grad
 from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
+import builtins
+
+
+def print(*args, **kwargs):
+    builtins.print("[brief]", *args, **kwargs)
 
 class NeuralNetwork(torch.nn.Module):
     def __init__(self, num_inputs, num_outputs):
@@ -51,21 +56,21 @@ def compute_accuracy(model, data_loader):
 def brief_torch():
     # Scalar/Vector/Matrix/Tensor
     tensor0d = torch.tensor(1)
-    print("tensor0d: ", tensor0d)
+    print(f"tensor0d: {tensor0d}")
     tensor1d = torch.tensor([1, 2, 3])
-    print("tensor1d: ", tensor1d)
+    print(f"tensor1d: {tensor1d}")
     tensor2d = torch.tensor([[1, 2, 3], [4, 5, 6]])
-    print("tensor2d: ", tensor2d)
+    print(f"tensor2d: {tensor2d}")
     tensor3d = torch.tensor([[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]])
-    print("tensor3d: ", tensor3d)
+    print(f"tensor3d: {tensor3d}")
 
     # Tensor data type
     tensorint = torch.tensor([1, 2, 3])
-    print("tensorint.dtype: ", tensorint.dtype)
+    print(f"tensorint.dtype: {tensorint.dtype}")
     tensorfloat = torch.tensor([1.0, 2.0, 3.0])
-    print("tensorfloat.dtype: ", tensorfloat.dtype)
+    print(f"tensorfloat.dtype: {tensorfloat.dtype}")
     tensorfloat64 = tensorfloat.to(torch.float64)
-    print("tensorfloat64.dtype: ", tensorfloat64.dtype)
+    print(f"tensorfloat64.dtype: {tensorfloat64.dtype}")
 
     # Basic operations
     print("tensor2d: ", tensor2d)

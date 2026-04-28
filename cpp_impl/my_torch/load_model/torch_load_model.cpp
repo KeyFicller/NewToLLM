@@ -1,5 +1,4 @@
 #include "my_torch.h"
-#include "toy_model/model.h"
 
 #include <filesystem>
 #include <iostream>
@@ -88,7 +87,7 @@ std::vector<uint64_t> tensor_to_ids(const torch::Tensor &out) {
 
 void print_generation_output(const std::string &loaded_from,
                              const torch::Tensor &out) {
-  std::cout << loaded_from << '\n';
+  std::cout << "[load_model] " << loaded_from << '\n';
   std::cout << "[load_model] Toy model output: "
             << decode_ids(tensor_to_ids(out)) << '\n';
 }
@@ -167,7 +166,7 @@ void load_model_torch() {
     } catch (const std::exception &e) {
       std::cout << "[load_model] failed to load TorchScript from "
                 << scripted_path << '\n';
-      std::cout << e.what() << '\n';
+      std::cout << "[load_model] " << e.what() << '\n';
     }
   }
 }

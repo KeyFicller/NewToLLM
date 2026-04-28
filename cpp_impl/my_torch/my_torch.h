@@ -1,7 +1,6 @@
 #pragma once
 
 #include "my_torch_export.h"
-#include "toy_model/model.h"
 
 #include <string>
 #include <torch/script.h>

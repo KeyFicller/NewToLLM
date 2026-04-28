@@ -1,7 +1,11 @@
 import torch
 import tiktoken
 from torch.optim import optimizer
-from python_impl.fine_tuning.utils import import_pretrained_model, random_split
+from python_impl.fine_tuning.utils import (
+    import_pretrained_model,
+    random_split,
+    train_model_simple,
+)
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
@@ -171,41 +175,6 @@ def calc_loss_loader(data_loader, model, device, num_batches=None):
 #         test_loss = calc_loss_loader(pLoader, model, device, num_batches=5)
 #     print(f"Initial lost, T:{train_loss:.3f}, V:{val_loss:.3f}, P:{test_loss:.3f}")
 
-# Fine tuning on classify spam ham message
-def train_classifier_simple(model,tLoader,vLoader,optimizer,device,num_epochs,eval_freq,eval_iter):
-    tLosses, vLosses = [], []
-    exmaples_seen, global_step = 0, -1
-    for epoch in range(num_epochs):
-        model.train()
-
-        for input_batch, target_batch in tLoader:
-            optimizer.zero_grad()
-            loss = calc_loss_batch(input_batch, target_batch, model, device)
-            loss.backward()
-            optimizer.step()
-            exmaples_seen += input_batch.shape[0]
-            global_step += 1
-
-            if global_step % eval_freq == 0:
-                tLoss, vLoss = evaluate_model(model, tLoader, vLoader, device, eval_iter)
-                tLosses.append(tLoss)
-                vLosses.append(vLoss)
-                print(f"[fine_tuning] Ep {epoch + 1} (Step {global_step: 06d}): "
-                      f"Train loss {tLoss:.3f}, Validate loss {vLoss:.3f}")
-        
-        tAccuracy = calc_accuracy_loader(tLoader, model, device, num_batches=eval_iter)
-        vAccuracy = calc_accuracy_loader(vLoader, model, device, num_batches=eval_iter)
-
-        print(f"[fine_tuning] Train accuracy : {tAccuracy * 100: .2f}%, Validate accuracy: {vAccuracy * 100: .2f}%")
-
-def evaluate_model(model, tLoader, vLoader, device, eval_iter):
-    model.eval()
-    with torch.no_grad():
-        tLoss = calc_loss_loader(tLoader, model, device, num_batches=eval_iter)
-        vLoss = calc_loss_loader(vLoader, model, device, num_batches=eval_iter)
-    model.train()
-    return tLoss, vLoss
-
 def fine_tuning_classify():
     model = import_pretrained_model()
 
@@ -228,7 +197,19 @@ def fine_tuning_classify():
     num_epochs = 5
     model.train()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train_classifier_simple(model, tLoader, vLoader, optimizer, device, num_epochs, eval_freq=50, eval_iter=5)
+    train_model_simple(
+        model,
+        tLoader,
+        vLoader,
+        optimizer,
+        device,
+        num_epochs=num_epochs,
+        eval_freq=50,
+        eval_iter=5,
+        calc_loss_batch_fn=calc_loss_batch,
+        calc_loss_loader_fn=calc_loss_loader,
+        calc_accuracy_loader_fn=calc_accuracy_loader,
+    )
 
     model.eval()
     print(f"[fine_tuning] Test accuracy : {calc_loss_loader(pLoader, model, device, num_batches=5) * 100:.2f}%")

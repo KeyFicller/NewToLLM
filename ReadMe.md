@@ -13,9 +13,22 @@ the ongoing refactor plan.
 
 - `python_impl/`: Python-side implementation and verification code
 - `cpp_impl/`: C++-side implementation and verification code
+- `extras/`: Python-only extras without a C++ counterpart (see `extras/README.md`)
 - `assets/`: datasets and the GPT-2 tokenizer file shared by both sides
 - `main.py`: Python entrypoint
 - `cpp_impl/sandbox/main.cpp`: C++ entrypoint (`sandbox` executable)
+
+## Python ↔ C++ layout
+
+| topic | Python (`python_impl/`) | C++ (`cpp_impl/my_torch/`) |
+|-------|-------------------------|----------------------------|
+| verify | `verifier/torch_verifier.py` | `verifier/torch_verifier.cpp` |
+| basics | `basic/torch_brief.py` | `basic/torch_brief.cpp` |
+| model | `toy_model/{config,transformer,model,torch_toy_model}.py` | `toy_model/{config.h,transformer,model,torch_toy_model}.cpp` |
+| pre-train | `train/{data_utils,torch_train}.py` | `train/{data_utils,torch_train}.cpp` |
+| load GPT-2 | `load_model/torch_load_model.py` | `load_model/torch_load_model.cpp` |
+| fine-tune | `fine_tuning/{torch_fine_tuning,fine_tuning_classify,fine_tuning_instruction,utils}.py` | `fine_tuning/{torch_fine_tuning,fine_tuning_classify}.cpp` (no instruction fine-tuning yet) |
+| utils | `utils/torch_utils.py` | `utils/torch_utils.cpp` |
 
 ## Tasks
 

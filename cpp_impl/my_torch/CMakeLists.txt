@@ -2,7 +2,7 @@ set(SOURCES
     my_torch.h
     my_torch_export.h
     verifier/torch_verifier.cpp
-    brief/torch_breif.cpp
+    basic/torch_brief.cpp
     toy_model/model.cpp
     toy_model/transformer.cpp
     toy_model/torch_toy_model.cpp

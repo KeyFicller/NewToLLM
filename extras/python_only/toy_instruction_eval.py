@@ -3,7 +3,13 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs
 
+import sys
+
 import torch
+
+# Allow `python extras/python_only/toy_instruction_eval.py` from the repo root.
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT))
 
 from python_impl.fine_tuning.fine_tuning_instruction import (
     build_gpt2_tokenizer,
@@ -17,7 +23,7 @@ from python_impl.utils.torch_utils import decl_device
 
 HOST = "127.0.0.1"
 PORT = 8787
-MODEL_PATH = Path("python_impl/.temp/fine-tuned-model-instruction.pth")
+MODEL_PATH = REPO_ROOT / "python_impl/.temp/fine-tuned-model-instruction.pth"
 
 tokenizer = build_gpt2_tokenizer()
 device = torch.device(decl_device())

@@ -15,7 +15,7 @@ the ongoing refactor plan.
 - `cpp_impl/`: C++-side implementation and verification code
 - `extras/`: Python-only extras without a C++ counterpart (see `extras/README.md`)
 - `configs/`: shared model / training config used by both sides
-- `tools/`: cross-side checks (`parity_check.py`, C++ half in `cpp_impl/tools/`)
+- `tools/`: cross-side checks (`parity_check.py`, `benchmark.py`; C++ halves in `cpp_impl/tools/`)
 - `assets/`: datasets and the GPT-2 tokenizer file shared by both sides
 - `main.py`: Python entrypoint
 - `cpp_impl/sandbox/main.cpp`: C++ entrypoint (`sandbox` executable)
@@ -70,6 +70,16 @@ python tools/parity_check.py --full   # GPT-2 124M shape
 Python builds the seeded toy model, hands its weights and a fixed input to the
 C++ `build/cpp_impl/tools/parity_check` executable, and compares the logits
 (fails if `max |Δ| > 1e-4` or argmax differs).
+
+## Benchmark (Python ↔ C++ speed)
+
+```shell
+python tools/benchmark.py                 # small model
+python tools/benchmark.py --full --write  # + GPT-2 124M shape, writes docs/benchmark.md
+```
+
+Same config, seed, batch×tokens and thread count on both sides; times forward
+(no grad) and one AdamW train step. Latest results: [docs/benchmark.md](docs/benchmark.md).
 
 > Run everything from the repository root: data paths such as `assets/...`
 > and the `.temp/` output folders are relative to it.

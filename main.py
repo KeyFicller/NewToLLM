@@ -21,7 +21,8 @@ TASKS = {
     "toy_model": ("toy model generation example", "python_impl.toy_model.torch_toy_model", "toy_model_torch"),
     "train": ("toy model pre-training example", "python_impl.train.torch_train", "train_torch"),
     "load_model": ("load public GPT-2 weights into toy model", "python_impl.load_model.torch_load_model", "load_model_torch"),
-    "fine_tuning": ("fine-tuning example", "python_impl.fine_tuning.torch_fine_tuning", "fine_tuning_torch"),
+    "fine_tuning_classify": ("fine-tune GPT-2 for SMS spam classification", "python_impl.fine_tuning.fine_tuning_classify", "fine_tuning_classify"),
+    "fine_tuning_instruction": ("instruction fine-tuning (not implemented in C++ yet)", "python_impl.fine_tuning.fine_tuning_instruction", "fine_tuning_instruction"),
 }
 
 
@@ -55,7 +56,7 @@ def main(argv=None):
     runtime.set_options(seed=args.seed, device=args.device, small=args.small)
     if args.task == "list":
         for name, (desc, _, _) in TASKS.items():
-            print(f"{name:<12} {desc}")
+            print(f"{name:<25} {desc}")
         return 0
     names = list(TASKS) if args.task == "all" else [args.task]
     for name in names:

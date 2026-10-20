@@ -32,7 +32,11 @@ const std::vector<Task> &tasks() {
       {"train", "toy model pre-training example", MyTorch::train_torch},
       {"load_model", "load public GPT-2 weights into toy model",
        MyTorch::load_model_torch},
-      {"fine_tuning", "fine-tuning example", MyTorch::fine_tuning_torch},
+      {"fine_tuning_classify", "fine-tune GPT-2 for SMS spam classification",
+       MyTorch::fine_tuning_classify_torch},
+      {"fine_tuning_instruction",
+       "instruction fine-tuning (not implemented in C++ yet)",
+       MyTorch::fine_tuning_instruction_torch},
   };
   return kTasks;
 }
@@ -47,15 +51,15 @@ void print_usage(const char *prog) {
             << " [task] [--seed N] [--device cpu|cuda|mps] [--small]\n\n"
             << "task (default: verify):\n";
   for (const auto &task : tasks()) {
-    std::cout << "  " << task.name << std::string(13 - task.name.size(), ' ')
+    std::cout << "  " << task.name << std::string(task.name.size() < 25 ? 25 - task.name.size() : 1, ' ')
               << task.description << '\n';
   }
-  std::cout << "  all          run every task in order\n"
-            << "  list         print tasks\n\n"
+  std::cout << "  all                      run every task in order\n"
+            << "  list                     print tasks\n\n"
             << "flags:\n"
-            << "  --seed N     random seed (default: configs/toy_gpt2.json)\n"
-            << "  --device D   force device (default: auto)\n"
-            << "  --small      use the small toy model for toy_model / train\n";
+            << "  --seed N                 random seed (default: configs/toy_gpt2.json)\n"
+            << "  --device D               force device (default: auto)\n"
+            << "  --small                  use the small toy model for toy_model / train\n";
 }
 
 } // namespace

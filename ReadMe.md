@@ -16,6 +16,7 @@ the ongoing refactor plan.
 - `extras/`: Python-only extras without a C++ counterpart (see `extras/README.md`)
 - `configs/`: shared model / training config used by both sides
 - `tools/`: cross-side checks (`parity_check.py`, `benchmark.py`; C++ halves in `cpp_impl/tools/`)
+- `tests/`: pytest suite (Python side + parity)
 - `assets/`: datasets and the GPT-2 tokenizer file shared by both sides
 - `main.py`: Python entrypoint
 - `cpp_impl/sandbox/main.cpp`: C++ entrypoint (`sandbox` executable)
@@ -80,6 +81,16 @@ python tools/benchmark.py --full --write  # + GPT-2 124M shape, writes docs/benc
 
 Same config, seed, batch×tokens and thread count on both sides; times forward
 (no grad) and one AdamW train step. Latest results: [docs/benchmark.md](docs/benchmark.md).
+
+## Tests & CI
+
+```shell
+ctest --test-dir build --output-on-failure   # C++ smoke tests
+python -m pytest tests                       # Python tests + parity (needs the C++ build)
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) builds both sides on CPU (LibTorch
+2.10.0) and runs CTest, pytest (incl. parity) and the small Python tasks on every PR.
 
 > Run everything from the repository root: data paths such as `assets/...`
 > and the `.temp/` output folders are relative to it.

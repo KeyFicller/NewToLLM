@@ -7,4 +7,5 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # required on Linux, harmless on macOS.
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+enable_testing()
 add_subdirectory(cpp_impl)

@@ -28,7 +28,7 @@ the ongoing refactor plan.
 | model | `toy_model/{config,transformer,model,torch_toy_model}.py` | `toy_model/{config.h,transformer,model,torch_toy_model}.cpp` |
 | pre-train | `train/{data_utils,torch_train}.py` | `train/{data_utils,torch_train}.cpp` |
 | load GPT-2 | `load_model/torch_load_model.py` | `load_model/torch_load_model.cpp` |
-| fine-tune | `fine_tuning/{torch_fine_tuning,fine_tuning_classify,fine_tuning_instruction,utils}.py` | `fine_tuning/{torch_fine_tuning,fine_tuning_classify}.cpp` (no instruction fine-tuning yet) |
+| fine-tune | `fine_tuning/{fine_tuning_classify,fine_tuning_instruction,utils}.py` | `fine_tuning/{torch_fine_tuning,fine_tuning_classify}.cpp` (instruction: ❌ not yet) |
 | utils | `utils/torch_utils.py` | `utils/torch_utils.cpp` |
 
 ## Tasks
@@ -40,7 +40,8 @@ the ongoing refactor plan.
 | `toy_model`   | build the toy GPT model and generate text     |
 | `train`       | pre-train the toy model on `the-verdict.txt`  |
 | `load_model`  | load public GPT-2 weights into the toy model  |
-| `fine_tuning` | fine-tuning (Python: instruction, C++: classification) |
+| `fine_tuning_classify` | fine-tune GPT-2 for SMS spam classification (both sides) |
+| `fine_tuning_instruction` | instruction fine-tuning (Python only; C++ prints a notice) |
 | `all`         | run every task in order                       |
 | `list`        | list tasks                                    |
 
@@ -54,7 +55,7 @@ Common flags (identical on both sides):
 
 Model and training hyper-parameters live in **`configs/toy_gpt2.json`**, read by
 both `python_impl/utils/runtime.py` and `cpp_impl/my_torch/utils/runtime.cpp`.
-`load_model` / `fine_tuning` always use the full GPT-2 shape (they load GPT-2 weights).
+`load_model` / `fine_tuning_*` always use the full GPT-2 shape (they load GPT-2 weights).
 
 > Run everything from the repository root: data paths such as `assets/...`
 > and the `.temp/` output folders are relative to it.
@@ -64,7 +65,7 @@ both `python_impl/utils/runtime.py` and `cpp_impl/my_torch/utils/runtime.cpp`.
 ### 1) Python (PyTorch)
 
 ```shell
-pip install -r requirements.txt   # torch, tiktoken (+ transformers, pandas for load_model / fine_tuning)
+pip install -r requirements.txt   # torch, tiktoken (+ transformers, pandas for load_model / fine_tuning_*)
 python main.py            # = python main.py verify
 python main.py toy_model
 python main.py list

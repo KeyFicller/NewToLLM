@@ -16,6 +16,8 @@ MY_TORCH_API void toy_model_torch();
 MY_TORCH_API void train_torch();
 MY_TORCH_API void load_model_torch();
 MY_TORCH_API torch::jit::script::Module load_saved_toy_model_jit();
-MY_TORCH_API void fine_tuning_torch();
+MY_TORCH_API void fine_tuning_classify_torch();
+// Not implemented yet on the C++ side: prints a notice.
+MY_TORCH_API void fine_tuning_instruction_torch();
 MY_TORCH_API tokenizers::Tiktoken *get_tokenizer(const std::string &path);
 } // namespace MyTorch

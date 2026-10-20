@@ -1,4 +1,6 @@
-set(LIBTORCH_VENDOR_PATH ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libtorch)
+# LibTorch location: defaults to cpp_impl/vendor/libtorch, override with
+#   cmake -DLIBTORCH_VENDOR_PATH=/path/to/libtorch ...
+set(LIBTORCH_VENDOR_PATH ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libtorch CACHE PATH "Path to extracted LibTorch")
 
 include(FetchContent)
 set(TOKENIZERS_BUILD_TEST OFF CACHE BOOL "" FORCE)

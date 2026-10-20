@@ -7,7 +7,8 @@ import random
 
 random.seed(42)
 
-NAMES_PATH = "../../assets/names.txt"
+# Resolved relative to this file, so the script runs from any working directory.
+NAMES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "assets", "names.txt")
 
 # ============================================================================
 # PART 1: Prepare training data

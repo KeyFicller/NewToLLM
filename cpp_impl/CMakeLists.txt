@@ -16,3 +16,5 @@ FetchContent_MakeAvailable(meta_pytorch_tokenizers)
 
 add_subdirectory(my_torch)
 add_subdirectory(sandbox)
+add_subdirectory(tools)
+

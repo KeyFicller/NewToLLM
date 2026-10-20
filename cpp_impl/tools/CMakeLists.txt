@@ -1,0 +1,2 @@
+add_executable(parity_check parity_check.cpp)
+target_link_libraries(parity_check my_torch)

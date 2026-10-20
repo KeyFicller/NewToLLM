@@ -38,9 +38,9 @@
    `brief/torch_breif.cpp` → `basic/torch_brief.cpp`；整理两边目录做到一一对应；把 `microgpt.py`、`toy_instruction_eval.py` 移到 `extras/python_only/`（附 `extras/README.md` 说明），路径改为相对脚本自身解析，不改行为；README 增加两边文件对照表。
 3. ✅ **共享配置与随机种子**（PR #4，已合入）
    把模型/训练超参数放到一个共享文件（如 `configs/toy_gpt2.json`），两边都从它读取；统一 `--seed`、`--device`、`--small`（小模型，方便 CPU 快速跑）参数。
-4. ✅ **同名任务做同一件事**（PR #5）
+4. ✅ **同名任务做同一件事**（PR #5，已合入）
    拆分 `fine_tuning` 为 `fine_tuning_classify` 与 `fine_tuning_instruction`；Python 两个都暴露，C++ 先暴露 classify，指令微调标为 TODO，在 README 的对照表里如实标注。
-5. **数值一致性检查（parity）**
+5. ✅ **数值一致性检查（parity）**（PR #6）
    Python 导出一份小模型权重和固定输入 → C++ 加载后前向，比较 logits 最大误差；做成 `tools/parity_check` 脚本 + 小测试，作为"两边实现正确"的硬证据。
 6. **性能对比脚本**
    `tools/benchmark`：同配置下两边的前向/训练 step 耗时、tokens/s，输出到 `docs/benchmark.md` 表格（注明硬件与版本）。

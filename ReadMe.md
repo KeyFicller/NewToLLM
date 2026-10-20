@@ -1,53 +1,56 @@
-## LLM from Scratch
+# NewToLLM: a GPT-2 style toy LLM in PyTorch and LibTorch, side by side
 
-This project explores LLM-related implementation from scratch using Torch in both:
+The same small GPT (GPT-2 124M shape, plus a tiny `--small` variant) is built from
+scratch twice:
 
-- Python (`PyTorch`)
-- C++ (`LibTorch`)
+- **Python**: `python_impl/` with **PyTorch**
+- **C++**: `cpp_impl/my_torch/` with **LibTorch**
 
-The two sides are meant to be compared side by side: every task has the same
-name in both entrypoints. See [docs/REFACTOR_PLAN.md](docs/REFACTOR_PLAN.md) for
-the ongoing refactor plan.
+Both sides use the same task names, CLI flags, config file and module and parameter names. A parity
+check verifies that they compute the same numbers, and a benchmark compares their speed.
 
-## Project Structure
+## Quick start
 
-- `python_impl/`: Python-side implementation and verification code
-- `cpp_impl/`: C++-side implementation and verification code
-- `extras/`: Python-only extras without a C++ counterpart (see `extras/README.md`)
-- `configs/`: shared model / training config used by both sides
-- `tools/`: cross-side checks (`parity_check.py`, `benchmark.py`; C++ halves in `cpp_impl/tools/`)
-- `tests/`: pytest suite (Python side + parity)
-- `assets/`: datasets and the GPT-2 tokenizer file shared by both sides
-- `main.py`: Python entrypoint
-- `cpp_impl/sandbox/main.cpp`: C++ entrypoint (`sandbox` executable)
+```shell
+# Python
+pip install -r requirements.txt
+python main.py list
+python main.py toy_model --small
 
-## Python ↔ C++ layout
+# C++ (LibTorch >= 2.10, CMake >= 3.10, C++20 compiler, git)
+curl -L -o libtorch.zip https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-2.10.0%2Bcpu.zip
+unzip libtorch.zip -d cpp_impl/vendor/          # -> cpp_impl/vendor/libtorch
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release  # or -DLIBTORCH_VENDOR_PATH=/path/to/libtorch
+cmake --build build -j
+./build/cpp_impl/sandbox/sandbox list
+./build/cpp_impl/sandbox/sandbox toy_model --small
 
-| topic | Python (`python_impl/`) | C++ (`cpp_impl/my_torch/`) |
-|-------|-------------------------|----------------------------|
-| verify | `verifier/torch_verifier.py` | `verifier/torch_verifier.cpp` |
-| basics | `basic/torch_brief.py` | `basic/torch_brief.cpp` |
-| model | `toy_model/{config,transformer,model,torch_toy_model}.py` | `toy_model/{config.h,transformer,model,torch_toy_model}.cpp` |
-| pre-train | `train/{data_utils,torch_train}.py` | `train/{data_utils,torch_train}.cpp` |
-| load GPT-2 | `load_model/torch_load_model.py` | `load_model/torch_load_model.cpp` |
-| fine-tune | `fine_tuning/{fine_tuning_classify,fine_tuning_instruction,utils}.py` | `fine_tuning/{torch_fine_tuning,fine_tuning_classify}.cpp` (instruction: ❌ not yet) |
-| utils | `utils/torch_utils.py` | `utils/torch_utils.cpp` |
+# Compare
+python tools/parity_check.py            # same logits?
+python tools/benchmark.py --full        # how fast?
+```
 
-## Tasks
+> Run everything from the repository root. `assets/...` and the `.temp/` output
+> folders are relative to it.
 
-| task          | what it does                                  |
-|---------------|-----------------------------------------------|
-| `verify`      | print torch version and selected device (default) |
-| `brief`       | torch basic examples                          |
-| `toy_model`   | build the toy GPT model and generate text     |
-| `train`       | pre-train the toy model on `the-verdict.txt`  |
-| `load_model`  | load public GPT-2 weights into the toy model  |
-| `fine_tuning_classify` | fine-tune GPT-2 for SMS spam classification (both sides) |
-| `fine_tuning_instruction` | instruction fine-tuning (Python only; C++ prints a notice) |
-| `all`         | run every task in order                       |
-| `list`        | list tasks                                    |
+For macOS, download LibTorch from <https://pytorch.org/get-started/locally/>.
 
-Common flags (identical on both sides):
+## Tasks and status
+
+`python main.py <task>` ↔ `./build/cpp_impl/sandbox/sandbox <task>`
+
+| task | what it does | Python | C++ |
+|------|--------------|:------:|:---:|
+| `verify` | torch version + selected device (default task) | ✅ | ✅ |
+| `brief` | tensor / autograd / tiny MLP training basics | ✅ | ✅ |
+| `toy_model` | build the toy GPT, greedy-generate a few tokens | ✅ | ✅ |
+| `train` | pre-train on `assets/the-verdict.txt` | ✅ | ✅ |
+| `load_model` | load public GPT-2 weights into the toy model | ✅ | ✅ (loads the TorchScript file exported by Python) |
+| `fine_tuning_classify` | SMS spam classification fine-tune | ✅ | ✅ |
+| `fine_tuning_instruction` | instruction fine-tune | ✅ | ❌ not yet (prints a notice) |
+| `all` / `list` | run all tasks / list tasks | ✅ | ✅ |
+
+Flags shared by both entrypoints:
 
 | flag | meaning |
 |------|---------|
@@ -55,32 +58,140 @@ Common flags (identical on both sides):
 | `--device D` | force `cpu` / `cuda` / `mps` (default: auto-detect) |
 | `--small` | use `model_small` (2 layers, 128 dim) for `toy_model` / `train`; fast on CPU |
 
-Model and training hyper-parameters live in **`configs/toy_gpt2.json`**, read by
-both `python_impl/utils/runtime.py` and `cpp_impl/my_torch/utils/runtime.cpp`.
-`load_model` / `fine_tuning_*` always use the full GPT-2 shape (they load GPT-2 weights).
+Model and training hyper-parameters are stored once, in **`configs/toy_gpt2.json`**. Both
+`python_impl/utils/runtime.py` and `cpp_impl/my_torch/utils/runtime.cpp` read it.
+`load_model` and `fine_tuning_*` always use the full GPT-2 shape because they load GPT-2 weights.
 
-## Parity check (Python ↔ C++ numerics)
+## File-by-file map
 
-After building the C++ side:
+| topic | Python (`python_impl/`) | C++ (`cpp_impl/my_torch/`) |
+|-------|-------------------------|----------------------------|
+| entrypoint | `../main.py` | `../sandbox/main.cpp` |
+| config / runtime | `toy_model/config.py`, `utils/runtime.py` | `toy_model/config.h`, `utils/runtime.{h,cpp}` |
+| verify | `verifier/torch_verifier.py` | `verifier/torch_verifier.cpp` |
+| basics | `basic/torch_brief.py` | `basic/torch_brief.cpp` |
+| model | `toy_model/{transformer,model,torch_toy_model}.py` | `toy_model/{transformer,model,torch_toy_model}.{h,cpp}` |
+| pre-train | `train/{data_utils,torch_train}.py` | `train/{data_utils,torch_train}.{h,cpp}` |
+| load GPT-2 | `load_model/torch_load_model.py` | `load_model/torch_load_model.cpp` |
+| fine-tune | `fine_tuning/{fine_tuning_classify,fine_tuning_instruction,utils}.py` | `fine_tuning/{torch_fine_tuning,fine_tuning_classify}.cpp` |
+| device | `utils/torch_utils.py` | `utils/torch_utils.{h,cpp}` |
+| parity / benchmark | `../tools/{parity_check,benchmark}.py` | `../tools/{parity_check,benchmark}.cpp` |
+
+Other folders: `configs/` holds the shared config, `assets/` the datasets and GPT-2 tokenizer, and `tests/` the pytest suite.
+`extras/python_only/` contains Python-only experiments that are not part of the comparison (see `extras/README.md`).
+
+## Side by side: the same model in both APIs
+
+### Defining a module and registering sub-modules
+
+```python
+class ToyModel(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.tok_emb = nn.Embedding(cfg["vocab_size"], cfg["emb_dim"])
+        self.trf_blocks = nn.Sequential(
+            *[ToyTransformerBlock(cfg) for _ in range(cfg["n_layers"])])
+```
+
+```cpp
+struct ToyModelImpl : torch::nn::Module { /* members ... */ };
+TORCH_MODULE(ToyModel);   // ToyModel = shared_ptr-like holder of ToyModelImpl
+
+ToyModelImpl::ToyModelImpl(const ToyModelConfig& cfg)
+    : tok_emb(register_module("tok_emb",
+          torch::nn::Embedding(cfg.vocab_size, cfg.emb_dim))),
+      trf_blocks(register_module("trf_blocks", torch::nn::Sequential())) {
+  for (int64_t i = 0; i < cfg.n_layers; ++i)
+    trf_blocks->push_back(ToyTransformerBlock(cfg));
+}
+```
+
+### Parameters, buffers and the causal mask
+
+```python
+self.scale = nn.Parameter(torch.ones(emb_dim))
+self.register_buffer("mask", torch.triu(torch.ones(T, T), diagonal=1))
+mask_bool = self.mask[:n_tokens, :n_tokens].to(dtype=torch.bool)
+attn_scores.masked_fill_(mask_bool, float("-inf"))
+```
+
+```cpp
+scale = register_parameter("scale", torch::ones({emb_dim}));
+register_buffer("mask", torch::triu(torch::ones({T, T}), 1));
+auto mask_bool = named_buffers()["mask"].to(torch::kBool)
+                     .index({Slice(None, n_tokens), Slice(None, n_tokens)});
+attn_scores.masked_fill_(mask_bool, -std::numeric_limits<float>::infinity());
+```
+
+### One training step
+
+```python
+optimizer = torch.optim.AdamW(model.parameters(), lr=4e-4, weight_decay=0.1)
+optimizer.zero_grad()
+loss = F.cross_entropy(model(x).flatten(0, 1), y.flatten())
+loss.backward()
+optimizer.step()
+```
+
+```cpp
+torch::optim::AdamW optimizer(model->parameters(),
+    torch::optim::AdamWOptions(4e-4).weight_decay(0.1));
+optimizer.zero_grad();
+auto loss = torch::nn::functional::cross_entropy(
+    model->forward(x).flatten(0, 1), y.flatten());
+loss.backward();
+optimizer.step();
+```
+
+### API differences cheat-sheet
+
+| concept | PyTorch | LibTorch |
+|---------|---------|----------|
+| module definition | subclass `nn.Module` | `struct XImpl : torch::nn::Module` + `TORCH_MODULE(X)` |
+| sub-module / parameter / buffer | attribute assignment, `nn.Parameter`, `register_buffer` | must call `register_module` / `register_parameter` / `register_buffer` explicitly |
+| access a buffer | `self.mask` | `named_buffers()["mask"]` |
+| slicing | `t[:, -k:]` | `t.index({Slice(), Slice(-k, None)})` |
+| `nn.Sequential` forward | `seq(x)` | `seq->forward<torch::Tensor>(x)` (typed) |
+| shapes | tuples `(B, T)` | brace lists `{B, T}` |
+| config | `dict` from JSON | typed `struct ToyModelConfig` filled from the same JSON |
+| no-grad | `with torch.no_grad():` | `torch::NoGradGuard guard;` |
+| scalar out | `t.item()` | `t.item<float>()` |
+| save / load for the other side | `torch.save` / `torch.jit.save` | `torch::pickle_load` / `torch::jit::load` |
+| data loading | `Dataset` + `DataLoader` | `torch::data::datasets::Dataset` + `make_data_loader` |
+
+## Parity: do both sides compute the same thing?
 
 ```shell
-python tools/parity_check.py          # small model, ~seconds
+python tools/parity_check.py          # small model
 python tools/parity_check.py --full   # GPT-2 124M shape
 ```
 
-Python builds the seeded toy model, hands its weights and a fixed input to the
-C++ `build/cpp_impl/tools/parity_check` executable, and compares the logits
-(fails if `max |Δ| > 1e-4` or argmax differs).
+Python builds the seeded model and saves its weights together with a fixed input. The
+C++ `parity_check` executable loads them into the C++ `ToyModel` by parameter name and runs
+the forward pass. The script then compares the logits and fails if the max |Δ| is above 1e-4
+or if the argmax differs. On Linux CPU:
 
-## Benchmark (Python ↔ C++ speed)
+| model | tensors | max abs diff | argmax equal |
+|-------|--------:|-------------:|:------------:|
+| small | 33 | 8.3e-07 | ✅ |
+| full (124M) | 173 | 1.9e-06 | ✅ |
+
+## Benchmark
 
 ```shell
-python tools/benchmark.py                 # small model
-python tools/benchmark.py --full --write  # + GPT-2 124M shape, writes docs/benchmark.md
+python tools/benchmark.py --full --write   # writes docs/benchmark.md
 ```
 
-Same config, seed, batch×tokens and thread count on both sides; times forward
-(no grad) and one AdamW train step. Latest results: [docs/benchmark.md](docs/benchmark.md).
+Both sides use the same config, seed, batch×tokens and thread count. The script times a no-grad
+forward pass and one AdamW step. The latest results are in [docs/benchmark.md](docs/benchmark.md).
+On an 8-vCPU Linux box the two sides stay within about 25% of each other (PyTorch 2.14 vs LibTorch 2.10):
+
+| model | side | forward ms | train step ms |
+|-------|------|-----------:|--------------:|
+| small | python | 18.8 | 81.3 |
+| small | cpp | 18.6 | 75.5 |
+| full | python | 102.3 | 596.0 |
+| full | cpp | 129.2 | 662.0 |
 
 ## Tests & CI
 
@@ -89,45 +200,18 @@ ctest --test-dir build --output-on-failure   # C++ smoke tests
 python -m pytest tests                       # Python tests + parity (needs the C++ build)
 ```
 
-GitHub Actions (`.github/workflows/ci.yml`) builds both sides on CPU (LibTorch
-2.10.0) and runs CTest, pytest (incl. parity) and the small Python tasks on every PR.
+GitHub Actions (`.github/workflows/ci.yml`) builds both sides on CPU with LibTorch 2.10.0.
+On every PR it runs CTest, pytest (including the parity check) and the small Python tasks.
 
-> Run everything from the repository root: data paths such as `assets/...`
-> and the `.temp/` output folders are relative to it.
+## Known gaps
 
-## Environment Setup
+- `fine_tuning_instruction` exists only in Python.
+- The `train` data loaders differ slightly. With the same config, Python runs 85 optimizer
+  steps and C++ runs 75, so the training curves are not directly comparable yet.
+  The model numerics are identical (see parity).
+- CI and the numbers above cover Linux CPU only. macOS/MPS and CUDA are untested.
 
-### 1) Python (PyTorch)
+## History
 
-```shell
-pip install -r requirements.txt   # torch, tiktoken (+ transformers, pandas for load_model / fine_tuning_*)
-python main.py            # = python main.py verify
-python main.py toy_model
-python main.py list
-```
-
-### 2) C++ (LibTorch)
-
-Requirements: CMake >= 3.10, a C++20 compiler, git (CMake fetches
-`meta-pytorch/tokenizers` on first configure).
-
-Download LibTorch (>= 2.10; older versions lack `torch/headeronly/...`) for your platform from the official PyTorch page
-([https://pytorch.org/get-started/locally/](https://pytorch.org/get-started/locally/)),
-e.g. on Linux CPU:
-
-```shell
-curl -L -o libtorch.zip https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-2.10.0%2Bcpu.zip
-unzip libtorch.zip -d cpp_impl/vendor/   # -> cpp_impl/vendor/libtorch
-```
-
-Then build and run:
-
-```shell
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-# or point at an existing LibTorch: -DLIBTORCH_VENDOR_PATH=/path/to/libtorch
-cmake --build build -j
-
-./build/cpp_impl/sandbox/sandbox            # = sandbox verify
-./build/cpp_impl/sandbox/sandbox toy_model
-./build/cpp_impl/sandbox/sandbox list
-```
+The refactor that produced this layout is documented step by step in
+[docs/REFACTOR_PLAN.md](docs/REFACTOR_PLAN.md).

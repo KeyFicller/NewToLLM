@@ -44,7 +44,13 @@
    Python 导出一份小模型权重和固定输入 → C++ 加载后前向，比较 logits 最大误差；做成 `tools/parity_check` 脚本 + 小测试，作为"两边实现正确"的硬证据。
 6. ✅ **性能对比脚本**（PR #7，已合入）
    `tools/benchmark`：同配置下两边的前向/训练 step 耗时、tokens/s，输出到 `docs/benchmark.md` 表格（注明硬件与版本）。
-7. ✅ **测试与 CI**（PR #8）
+7. ✅ **测试与 CI**（PR #8，已合入）
    Python 用 pytest 跑 `verify`/小模型前向/parity；C++ 用 CTest；GitHub Actions 在 CPU 上构建 LibTorch 版本并运行，保证以后每个 PR 两边都不坏。
-8. **README 重写为对照文档**
+8. ✅ **README 重写为对照文档**（PR #9）
    每个任务一节：Python 代码 ↔ C++ 代码并排、API 差异说明（如 `register_module`、`Slice`、`forward<>`）、parity 与 benchmark 结果。
+
+## 遗留问题（计划之外，后续可做）
+
+- C++ 侧补上 `fine_tuning_instruction`。
+- 对齐 `train` 两边的数据切分：同配置下 Python 跑 85 步，C++ 跑 75 步。
+- 在 CI 里覆盖 macOS / MPS 和 CUDA。

@@ -14,7 +14,7 @@ set(SOURCES
     utils/torch_utils.cpp
 )
 
-set(CMAKE_PREFIX_PATH ${LIBTORCH_VENDOR_PATH})
+list(APPEND CMAKE_PREFIX_PATH ${LIBTORCH_VENDOR_PATH})
 find_package(Torch REQUIRED)
 
 include_directories(${TORCH_INCLUDE_DIRS}/include)

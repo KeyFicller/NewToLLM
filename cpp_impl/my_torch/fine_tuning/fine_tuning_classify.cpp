@@ -3,6 +3,7 @@
 #include "my_torch.h"
 
 #include <pytorch/tokenizers/tiktoken.h>
+#include <torch/torch.h>
 #include <algorithm>
 #include <cstdint>
 #include <exception>

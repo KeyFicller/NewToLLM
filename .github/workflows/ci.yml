@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  cpu:
+    runs-on: ubuntu-latest
+    env:
+      LIBTORCH_VERSION: 2.10.0
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps (CPU torch)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install tiktoken pytest
+
+      - name: Cache LibTorch
+        id: libtorch-cache
+        uses: actions/cache@v4
+        with:
+          path: cpp_impl/vendor/libtorch
+          key: libtorch-cpu-${{ env.LIBTORCH_VERSION }}
+
+      - name: Download LibTorch (CPU)
+        if: steps.libtorch-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -sSL -o libtorch.zip "https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-${LIBTORCH_VERSION}%2Bcpu.zip"
+          mkdir -p cpp_impl/vendor
+          unzip -q libtorch.zip -d cpp_impl/vendor
+          rm libtorch.zip
+
+      - name: Build C++ side
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j"$(nproc)"
+
+      - name: CTest (C++)
+        run: ctest --test-dir build --output-on-failure
+
+      - name: pytest (Python + parity)
+        run: python -m pytest -v tests
+
+      - name: Python smoke tasks
+        run: |
+          python main.py brief
+          python main.py toy_model --small

@@ -18,3 +18,13 @@ add_subdirectory(my_torch)
 add_subdirectory(sandbox)
 add_subdirectory(tools)
 
+# CTest: smoke tests for the C++ side (run from repo root so assets/ resolve).
+enable_testing()
+set(NEWTOLLM_ROOT ${PROJECT_SOURCE_DIR})
+add_test(NAME sandbox_list COMMAND sandbox list WORKING_DIRECTORY ${NEWTOLLM_ROOT})
+add_test(NAME sandbox_verify COMMAND sandbox verify --device cpu WORKING_DIRECTORY ${NEWTOLLM_ROOT})
+add_test(NAME sandbox_brief COMMAND sandbox brief WORKING_DIRECTORY ${NEWTOLLM_ROOT})
+add_test(NAME sandbox_toy_model_small COMMAND sandbox toy_model --small WORKING_DIRECTORY ${NEWTOLLM_ROOT})
+add_test(NAME sandbox_unknown_task COMMAND sandbox no_such_task WORKING_DIRECTORY ${NEWTOLLM_ROOT})
+set_tests_properties(sandbox_unknown_task PROPERTIES WILL_FAIL TRUE)
+set_tests_properties(sandbox_verify PROPERTIES PASS_REGULAR_EXPRESSION "device should be: cpu")

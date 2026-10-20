@@ -14,6 +14,7 @@ the ongoing refactor plan.
 - `python_impl/`: Python-side implementation and verification code
 - `cpp_impl/`: C++-side implementation and verification code
 - `extras/`: Python-only extras without a C++ counterpart (see `extras/README.md`)
+- `configs/`: shared model / training config used by both sides
 - `assets/`: datasets and the GPT-2 tokenizer file shared by both sides
 - `main.py`: Python entrypoint
 - `cpp_impl/sandbox/main.cpp`: C++ entrypoint (`sandbox` executable)
@@ -42,6 +43,18 @@ the ongoing refactor plan.
 | `fine_tuning` | fine-tuning (Python: instruction, C++: classification) |
 | `all`         | run every task in order                       |
 | `list`        | list tasks                                    |
+
+Common flags (identical on both sides):
+
+| flag | meaning |
+|------|---------|
+| `--seed N` | random seed (default: `seed` in `configs/toy_gpt2.json`) |
+| `--device D` | force `cpu` / `cuda` / `mps` (default: auto-detect) |
+| `--small` | use `model_small` (2 layers, 128 dim) for `toy_model` / `train`; fast on CPU |
+
+Model and training hyper-parameters live in **`configs/toy_gpt2.json`**, read by
+both `python_impl/utils/runtime.py` and `cpp_impl/my_torch/utils/runtime.cpp`.
+`load_model` / `fine_tuning` always use the full GPT-2 shape (they load GPT-2 weights).
 
 > Run everything from the repository root: data paths such as `assets/...`
 > and the `.temp/` output folders are relative to it.

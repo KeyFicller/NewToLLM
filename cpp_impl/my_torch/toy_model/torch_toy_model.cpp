@@ -1,5 +1,6 @@
 #include "my_torch.h"
 #include "toy_model/model.h"
+#include "utils/runtime.h"
 
 #include <filesystem>
 #include <iostream>
@@ -91,10 +92,11 @@ std::string decode_tokens_with_tiktoken(const std::vector<uint64_t> &token_ids,
 } // namespace
 
 void toy_model_torch() {
-  torch::manual_seed(123);
+  torch::manual_seed(runtime_seed());
 
-  // Like Python config dict, but as a strongly typed C++ struct.
-  ToyModelConfig cfg;
+  // Like Python config dict, but as a strongly typed C++ struct
+  // (loaded from configs/toy_gpt2.json, --small aware).
+  ToyModelConfig cfg = model_config();
   ToyModel model(cfg);
 
   int64_t total_params = 0;

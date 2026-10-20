@@ -1,5 +1,5 @@
 import torch
-import python_impl.toy_model.config as cfg
+from python_impl.utils import runtime
 import tiktoken
 from python_impl.toy_model.model import ToyModel
 
@@ -54,9 +54,10 @@ def generate_text_advanced(model, idx, max_new_tokens, context_length,
     return idx
 
 def toy_model_torch():
-    torch.manual_seed(123)
-    # Build model from the config dictionary.
-    model = ToyModel(cfg.ToyModelConfig)
+    torch.manual_seed(runtime.seed())
+    # Build model from the shared config (configs/toy_gpt2.json, --small aware).
+    model_cfg = runtime.model_config()
+    model = ToyModel(model_cfg)
 
     # total_params = sum(p.numel() for p in model.parameters())
     # print(f"Total parameters: {total_params}")
@@ -91,7 +92,7 @@ def toy_model_torch():
         model=model,
         idx=encoded_tensor,
         max_new_tokens=6,
-        context_length=cfg.ToyModelConfig["context_length"],
+        context_length=model_cfg["context_length"],
     )
     print(f"[toy_model] Generated token ids: {output_ids.tolist()}")
     print(f"[toy_model] Generated sequence length: {len(output_ids[0])}")

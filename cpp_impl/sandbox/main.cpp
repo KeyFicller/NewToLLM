@@ -5,7 +5,10 @@
 //
 //   python main.py <task>
 //   ./build/cpp_impl/sandbox/sandbox <task>
+//
+// Common flags (same on both sides): --seed N, --device cpu|cuda|mps, --small.
 #include "my_torch.h"
+#include "utils/runtime.h"
 
 #include <functional>
 #include <iostream>
@@ -40,20 +43,42 @@ void run_task(const Task &task) {
 }
 
 void print_usage(const char *prog) {
-  std::cout << "usage: " << prog << " [task]\n\n"
+  std::cout << "usage: " << prog
+            << " [task] [--seed N] [--device cpu|cuda|mps] [--small]\n\n"
             << "task (default: verify):\n";
   for (const auto &task : tasks()) {
     std::cout << "  " << task.name << std::string(13 - task.name.size(), ' ')
               << task.description << '\n';
   }
   std::cout << "  all          run every task in order\n"
-            << "  list         print tasks\n";
+            << "  list         print tasks\n\n"
+            << "flags:\n"
+            << "  --seed N     random seed (default: configs/toy_gpt2.json)\n"
+            << "  --device D   force device (default: auto)\n"
+            << "  --small      use the small toy model for toy_model / train\n";
 }
 
 } // namespace
 
 int main(int argc, char **argv) {
-  const std::string name = argc > 1 ? argv[1] : "verify";
+  std::string name = "verify";
+  auto &options = MyTorch::runtime_options();
+  for (int i = 1; i < argc; ++i) {
+    const std::string arg = argv[i];
+    if (arg == "--seed" && i + 1 < argc) {
+      options.seed = std::stoull(argv[++i]);
+    } else if (arg == "--device" && i + 1 < argc) {
+      options.device = argv[++i];
+    } else if (arg == "--small") {
+      options.small = true;
+    } else if (arg.rfind("--", 0) == 0 && arg != "--help") {
+      std::cerr << "unknown or incomplete flag: " << arg << "\n\n";
+      print_usage(argv[0]);
+      return 2;
+    } else {
+      name = arg;
+    }
+  }
 
   if (name == "-h" || name == "--help" || name == "list") {
     print_usage(argv[0]);

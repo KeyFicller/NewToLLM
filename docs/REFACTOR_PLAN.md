@@ -34,9 +34,9 @@
 1. ✅ **统一入口与可运行性**（PR #2，已合入）
    修复 `main.py` 的 bug，并改成任务表 + 延迟 import；C++ `sandbox` 支持命令行参数，任务名与 Python 完全一致（`verify / brief / toy_model / train / load_model / fine_tuning / all / list`）；
    LibTorch 路径可通过 `-DLIBTORCH_VENDOR_PATH` 覆盖；新增 `requirements.txt`；README 补全 Linux/macOS 的构建与运行说明；顺带修复 Linux 下的两个构建问题（`fine_tuning_classify.cpp` 缺 `#include <torch/torch.h>`、静态库 tokenizers 链入共享库需要 `-fPIC`）。
-2. ✅ **命名与目录对齐**（本 PR）
+2. ✅ **命名与目录对齐**（PR #3，已合入）
    `brief/torch_breif.cpp` → `basic/torch_brief.cpp`；整理两边目录做到一一对应；把 `microgpt.py`、`toy_instruction_eval.py` 移到 `extras/python_only/`（附 `extras/README.md` 说明），路径改为相对脚本自身解析，不改行为；README 增加两边文件对照表。
-3. **共享配置与随机种子**
+3. ✅ **共享配置与随机种子**（PR #4）
    把模型/训练超参数放到一个共享文件（如 `configs/toy_gpt2.json`），两边都从它读取；统一 `--seed`、`--device`、`--small`（小模型，方便 CPU 快速跑）参数。
 4. **同名任务做同一件事**
    拆分 `fine_tuning` 为 `fine_tuning_classify` 与 `fine_tuning_instruction`；Python 两个都暴露，C++ 先暴露 classify，指令微调标为 TODO，在 README 的对照表里如实标注。

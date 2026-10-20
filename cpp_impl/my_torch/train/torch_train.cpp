@@ -1,6 +1,8 @@
 #include "my_torch.h"
 #include "toy_model/model.h"
 #include "train/data_utils.h"
+#include "utils/runtime.h"
+#include "utils/torch_utils.h"
 
 #include <iomanip>
 #include <iostream>
@@ -72,7 +74,8 @@ void generate_and_print_sample(ToyModel &model, tokenizers::Tiktoken &tokenizer,
 } // namespace
 
 void train_torch() {
-  torch::manual_seed(123);
+  torch::manual_seed(runtime_seed());
+  const TrainConfig train_cfg = train_config();
 
   auto *tokenizer_ptr = get_tokenizer(kTokenizerPath);
   if (tokenizer_ptr == nullptr) {
@@ -80,8 +83,8 @@ void train_torch() {
   }
   auto &tokenizer = *tokenizer_ptr;
 
-  ToyModelConfig cfg;
-  cfg.context_length = 256;
+  ToyModelConfig cfg = model_config();
+  cfg.context_length = train_cfg.context_length;
   ToyModel model(cfg);
 
   const std::string start_context = "Every effort moves you";
@@ -119,7 +122,7 @@ void train_torch() {
     return;
   }
 
-  const int64_t batch_size = 2;
+  const int64_t batch_size = train_cfg.batch_size;
   auto train_loader = create_train_data_loader(
       train_ids, batch_size, cfg.context_length, cfg.context_length);
   auto val_loader = create_eval_data_loader(
@@ -140,16 +143,16 @@ void train_torch() {
             << ", batches: " << val_batches << ", batch_size: " << batch_size
             << '\n';
 
-  torch::Device device(torch::cuda::is_available() ? torch::kCUDA
-                                                   : torch::kCPU);
+  torch::Device device = decl_device();
   model->to(device);
   model->train();
 
   torch::optim::AdamW optimizer(
       model->parameters(),
-      torch::optim::AdamWOptions(0.0004).weight_decay(0.1));
+      torch::optim::AdamWOptions(train_cfg.learning_rate)
+          .weight_decay(train_cfg.weight_decay));
 
-  const int64_t num_epochs = 10;
+  const int64_t num_epochs = train_cfg.num_epochs;
   const int64_t eval_freq = 5;
   const int64_t eval_iter = 5;
   int64_t global_step = 0;

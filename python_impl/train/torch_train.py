@@ -1,6 +1,7 @@
 import torch
 from python_impl.toy_model.torch_toy_model import ToyModel
-from python_impl.toy_model.config import ToyModelConfig
+from python_impl.utils import runtime
+from python_impl.utils.torch_utils import decl_device
 
 import tiktoken
 from python_impl.toy_model.torch_toy_model import generate_text_simple, generate_text_advanced
@@ -87,11 +88,12 @@ def train_model_simple(
     return train_losses, val_losses, track_tokens_seen
 
 def train_torch():
-    cfg = ToyModelConfig.copy()
-    # Make it runnable.
-    cfg["context_length"] = 256
+    cfg = runtime.model_config()
+    train_cfg = runtime.train_config()
+    # Shorter context to keep training runnable (configs/toy_gpt2.json: train).
+    cfg["context_length"] = train_cfg["context_length"]
 
-    torch.manual_seed(123)
+    torch.manual_seed(runtime.seed())
     model = ToyModel(cfg)
     model.eval()
 
@@ -112,8 +114,8 @@ def train_torch():
     train_data = text_data[:split_idx]
     val_data = text_data[split_idx:]
 
-    train_loader = data_utils.create_data_loader(train_data, batch_size=2, max_length=cfg["context_length"], stride=cfg["context_length"], shuffle=True, drop_last=True, num_workers=0)
-    val_loader = data_utils.create_data_loader(val_data, batch_size=2, max_length=cfg["context_length"], stride=cfg["context_length"], shuffle=False, drop_last=True, num_workers=0)
+    train_loader = data_utils.create_data_loader(train_data, batch_size=train_cfg["batch_size"], max_length=cfg["context_length"], stride=cfg["context_length"], shuffle=True, drop_last=True, num_workers=0)
+    val_loader = data_utils.create_data_loader(val_data, batch_size=train_cfg["batch_size"], max_length=cfg["context_length"], stride=cfg["context_length"], shuffle=False, drop_last=True, num_workers=0)
 
     train_samples = len(train_loader.dataset)
     val_samples = len(val_loader.dataset)
@@ -128,10 +130,10 @@ def train_torch():
         f"batch_size: {val_loader.batch_size}"
     )
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0004, weight_decay=0.1)
-    num_epochs = 10
+    optimizer = torch.optim.AdamW(model.parameters(), lr=train_cfg["learning_rate"], weight_decay=train_cfg["weight_decay"])
+    num_epochs = train_cfg["num_epochs"]
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device(decl_device())
     model.to(device)
 
     # Start training loop and collect loss curves.

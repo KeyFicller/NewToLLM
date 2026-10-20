@@ -5,6 +5,8 @@ so the same experiment can be run on both sides:
 
     python main.py <task>
     ./build/cpp_impl/sandbox/sandbox <task>
+
+Common flags (same on both sides): --seed N, --device cpu|cuda|mps, --small.
 """
 
 import argparse
@@ -40,11 +42,17 @@ def parse_args(argv=None):
         choices=[*TASKS, "all", "list"],
         help="Task to run (default: verify; 'all' runs every task in order; 'list' prints tasks)",
     )
+    parser.add_argument("--seed", type=int, default=None, help="random seed (default: configs/toy_gpt2.json)")
+    parser.add_argument("--device", default=None, help="force device, e.g. cpu / cuda / mps (default: auto)")
+    parser.add_argument("--small", action="store_true", help="use the small toy model (model_small) for toy_model / train")
     return parser.parse_args(argv)
 
 
 def main(argv=None):
     args = parse_args(argv)
+    from python_impl.utils import runtime
+
+    runtime.set_options(seed=args.seed, device=args.device, small=args.small)
     if args.task == "list":
         for name, (desc, _, _) in TASKS.items():
             print(f"{name:<12} {desc}")

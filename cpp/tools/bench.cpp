@@ -6,9 +6,9 @@
 // Workloads (identical shapes and seeds on both sides):
 //   forward     model.eval() + NoGradGuard, logits for [batch, context] token ids
 //   train_step  zero_grad + forward + cross_entropy + backward + AdamW.step
-#include "newtollm/config.h"
-#include "newtollm/gpt.h"
-#include "newtollm/train.h"
+#include "torchtwins/config.h"
+#include "torchtwins/gpt.h"
+#include "torchtwins/train.h"
 
 #include <torch/torch.h>
 #include <torch/version.h>
@@ -48,10 +48,10 @@ double median(std::vector<double> v) {
 
 int bench(const std::string& preset_name, int threads, int warmup, int iters) {
   torch::set_num_threads(threads);
-  const auto preset = newtollm::load_preset(preset_name);
+  const auto preset = torchtwins::load_preset(preset_name);
   const auto& cfg = preset.model;
   torch::manual_seed(preset.seed);
-  newtollm::GPTModel model(cfg);
+  torchtwins::GPTModel model(cfg);
   const auto shape = std::vector<int64_t>{preset.train.batch_size, cfg.context_length};
   const auto inputs = torch::randint(cfg.vocab_size, shape);
   const auto targets = torch::randint(cfg.vocab_size, shape);
@@ -71,7 +71,7 @@ int bench(const std::string& preset_name, int threads, int warmup, int iters) {
   const auto train_step = time_ms(
       [&] {
         optimizer.zero_grad();
-        newtollm::loss_batch(model, inputs, targets).backward();
+        torchtwins::loss_batch(model, inputs, targets).backward();
         optimizer.step();
       },
       warmup, iters);

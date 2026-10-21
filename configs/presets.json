@@ -1,5 +1,5 @@
 {
-  "_comment": "Shared by py/newtollm/config.py and cpp/newtollm/config.cpp. Edit here, never in code.",
+  "_comment": "Shared by py/torchtwins/config.py and cpp/torchtwins/config.cpp. Edit here, never in code.",
   "seed": 123,
   "presets": {
     "tiny": {

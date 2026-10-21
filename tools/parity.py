@@ -24,8 +24,8 @@ from pathlib import Path
 
 import torch
 
-from newtollm.config import REPO_ROOT, load_preset
-from newtollm.gpt import GPTModel
+from torchtwins.config import REPO_ROOT, load_preset
+from torchtwins.gpt import GPTModel
 
 PARITY_EXE = REPO_ROOT / "build" / "bin" / "parity"
 RESULTS = REPO_ROOT / "docs" / "results" / "parity.json"

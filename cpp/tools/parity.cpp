@@ -5,8 +5,8 @@
 //   parity version                           LibTorch version
 //
 // Files are torch pickles: read with torch::pickle_load, written with torch::pickle_save.
-#include "newtollm/config.h"
-#include "newtollm/gpt.h"
+#include "torchtwins/config.h"
+#include "torchtwins/gpt.h"
 
 #include <torch/torch.h>
 #include <torch/version.h>
@@ -36,9 +36,9 @@ void write_tensors(const std::string& path, const std::vector<torch::Tensor>& te
 }
 
 int init(const std::string& preset_name, uint64_t seed, const std::string& out_path) {
-  const auto preset = newtollm::load_preset(preset_name).with_seed(seed);
+  const auto preset = torchtwins::load_preset(preset_name).with_seed(seed);
   torch::manual_seed(preset.seed);
-  const newtollm::GPTModel model(preset.model);
+  const torchtwins::GPTModel model(preset.model);
   std::vector<torch::Tensor> tensors;
   for (const auto& p : model->named_parameters()) {
     std::cout << p.key() << '\n';
@@ -54,8 +54,8 @@ int forward(const std::string& preset_name, const std::string& in_path,
   const auto root = torch::pickle_load(read_bytes(in_path)).toTuple();
   const auto input = root->elements().at(0).toTensor();
   const auto weights = root->elements().at(1).toList();
-  const auto preset = newtollm::load_preset(preset_name);
-  newtollm::GPTModel model(preset.model);
+  const auto preset = torchtwins::load_preset(preset_name);
+  torchtwins::GPTModel model(preset.model);
   auto params = model->named_parameters();
   if (params.size() != weights.size()) {
     throw std::runtime_error("parameter count mismatch");

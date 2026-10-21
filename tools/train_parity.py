@@ -20,9 +20,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from newtollm.config import REPO_ROOT
+from torchtwins.config import REPO_ROOT
 
-CPP_CLI = REPO_ROOT / "build" / "bin" / "newtollm"
+CPP_CLI = REPO_ROOT / "build" / "bin" / "torchtwins"
 RESULTS = REPO_ROOT / "docs" / "results" / "train_curves.json"
 ATOL = 1e-4
 
@@ -58,7 +58,7 @@ def max_diff(a: list[float], b: list[float]) -> float:
 def compare(preset: str, seed: int) -> tuple[TrainParity, dict[str, Any], dict[str, Any]]:
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp = Path(tmp_dir)
-        py = run_curve([sys.executable, "-m", "newtollm"], preset, seed, tmp / "py.json")
+        py = run_curve([sys.executable, "-m", "torchtwins"], preset, seed, tmp / "py.json")
         cpp = run_curve([str(CPP_CLI)], preset, seed, tmp / "cpp.json")
     train_diff = max_diff(py["train_loss"], cpp["train_loss"])
     val_diff = max_diff(py["val_loss"], cpp["val_loss"])

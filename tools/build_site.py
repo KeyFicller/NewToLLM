@@ -34,9 +34,9 @@ from site_rules import RULES, ApiRule
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SITE = REPO_ROOT / "docs" / "site"
 RESULTS = REPO_ROOT / "docs" / "results"
-PY_DIR = REPO_ROOT / "py" / "newtollm"
-CPP_DIR = REPO_ROOT / "cpp" / "newtollm"
-CPP_CLI = REPO_ROOT / "build" / "bin" / "newtollm"
+PY_DIR = REPO_ROOT / "py" / "torchtwins"
+CPP_DIR = REPO_ROOT / "cpp" / "torchtwins"
+CPP_CLI = REPO_ROOT / "build" / "bin" / "torchtwins"
 TRANSCRIPTS = RESULTS / "transcripts.json"
 LESSON_ORDER = list(LESSON_TITLES)
 RUNNABLE = ["tensors", "autograd", "modules", "attention", "gpt", "data", "train", "finetune"]
@@ -328,8 +328,8 @@ def render_transcript(module: str, transcripts: dict[str, Any]) -> str:
     return (
         '<section class="block" id="transcript"><h3>运行输出（实测）'
         f'<span class="verdict {"ok" if verdict == "IDENTICAL" else "bad"}">{verdict}</span></h3>'
-        f'<div class="note">命令：<code>python -m newtollm {module}</code> 与 '
-        f"<code>./build/bin/newtollm {module}</code>；文本逐字比较，数字容差 1e-4。"
+        f'<div class="note">命令：<code>python -m torchtwins {module}</code> 与 '
+        f"<code>./build/bin/torchtwins {module}</code>；文本逐字比较，数字容差 1e-4。"
         "标灰的行逐字相同，其余行只在浮点末位不同。</div>"
         '<table class="twin-table transcript"><thead><tr><th>PyTorch stdout</th>'
         f"<th>LibTorch stdout</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>"
@@ -353,8 +353,8 @@ def lesson_page(module: str, transcripts: dict[str, Any]) -> tuple[str, dict[str
     cpp_loc = sum(1 for v in cpp.values() for line in v if not CPP_STEP.match(line.text))
     head = (
         f'<header class="lesson-head"><div class="num">{number}</div><div><h1>{title}</h1>'
-        f'<p class="files"><code>py/newtollm/{module}.py</code> ⇄ '
-        f"<code>cpp/newtollm/{module}.{{h,cpp}}</code></p>"
+        f'<p class="files"><code>py/torchtwins/{module}.py</code> ⇄ '
+        f"<code>cpp/torchtwins/{module}.{{h,cpp}}</code></p>"
         f'<p class="stats">{len(py_blocks)} 个 twin 块 · {steps} 个语义步骤 · Python {py_loc} 行 · C++ {cpp_loc} 行 · '
         f"{len(api)} 类 API 差异（黄色高亮，悬停看解释）</p></div></header>"
         f'<nav class="toc">{toc}{"<a href=#transcript>运行输出</a>" if module in RUNNABLE else ""}'
@@ -505,7 +505,7 @@ def record_transcripts() -> None:
     lessons: dict[str, Any] = {}
     for lesson in RUNNABLE:
         py = subprocess.run(
-            [sys.executable, "-m", "newtollm", lesson],
+            [sys.executable, "-m", "torchtwins", lesson],
             cwd=REPO_ROOT,
             check=True,
             capture_output=True,

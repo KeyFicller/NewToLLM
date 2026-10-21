@@ -2,7 +2,7 @@
 
     python tools/check_twins.py
 
-A twin pair is ``py/newtollm/<name>.py`` <-> ``cpp/newtollm/<name>.{h,cpp}``.
+A twin pair is ``py/torchtwins/<name>.py`` <-> ``cpp/torchtwins/<name>.{h,cpp}``.
 Each side marks comparable blocks with ``# @twin <block>`` / ``// @twin <block>``;
 the set of block names must be identical and appear in the same order.
 ``// @endtwin`` ends a block early (e.g. to keep trailing declarations out of it).
@@ -21,8 +21,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-PY_DIR = REPO_ROOT / "py" / "newtollm"
-CPP_DIR = REPO_ROOT / "cpp" / "newtollm"
+PY_DIR = REPO_ROOT / "py" / "torchtwins"
+CPP_DIR = REPO_ROOT / "cpp" / "torchtwins"
 PY_MARKER = re.compile(r"^\s*# @twin (\w+)\s*$")
 CPP_MARKER = re.compile(r"^\s*// @twin (\w+)\s*$")
 END_MARKER = re.compile(r"^\s*(#|//) @endtwin\s*$")
@@ -110,7 +110,7 @@ def check() -> list[str]:
     errors: list[str] = []
     for name in twin_names():
         if not (CPP_DIR / f"{name}.h").exists():
-            errors.append(f"{name}: missing cpp/newtollm/{name}.h")
+            errors.append(f"{name}: missing cpp/torchtwins/{name}.h")
             continue
         py = [b.name for b in read_blocks(PY_DIR / f"{name}.py", PY_MARKER)]
         cpp = [b.name for b in cpp_blocks(name)]

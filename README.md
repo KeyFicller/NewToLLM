@@ -1,9 +1,9 @@
-# NewToLLM：一个 GPT，写两遍
+# TorchTwins：一个 GPT，写两遍
 
 用 **PyTorch（Python）** 和 **LibTorch（C++）** 各实现一遍同一个小型 GPT。两边文件名、类名、函数名一一对应，
 每课打印的输出逐行相同，权重和 logits 数值一致。可以把它当作 PyTorch ↔ LibTorch 的对照教材。
 
-**👉 并排对照站点：<https://keyficller.github.io/NewToLLM/>**（本地打开 `docs/site/index.html` 也一样）
+**👉 并排对照站点：<https://keyficller.github.io/TorchTwins/>**（本地打开 `docs/site/index.html` 也一样）
 
 站点由 `tools/build_site.py` 从源码自动生成：左边 Python、右边 C++，按 `@twin` 代码块对齐，
 块内再按 `@step` 语义锚点切成一步一行（`# @step qk: 投影 Q/K 并打分` ↔ `// @step qk`），每行附中文说明，
@@ -30,9 +30,9 @@ API 差异高亮并附解释；结果页的表格和图表全部读自 `docs/res
 ```bash
 pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -e ".[dev]"
-python -m newtollm list          # 列出所有课程
-python -m newtollm tensors       # 运行第 01 课
-python -m newtollm train --preset tiny
+python -m torchtwins list          # 列出所有课程
+python -m torchtwins tensors       # 运行第 01 课
+python -m torchtwins train --preset tiny
 ```
 
 ### C++（LibTorch ≥ 2.10）
@@ -44,7 +44,7 @@ mkdir -p vendor && unzip -q libtorch.zip -d vendor
 
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build build -j
-./build/bin/newtollm tensors     # 和 python -m newtollm tensors 输出逐行相同
+./build/bin/torchtwins tensors     # 和 python -m torchtwins tensors 输出逐行相同
 ```
 
 ### 跑一遍全部门禁
@@ -86,8 +86,8 @@ python tools/build_site.py --check     # 站点与源码同步
 ```
 configs/presets.json     共享配置（tiny / small / gpt2）
 assets/                  语料、垃圾短信数据集、gpt2.tiktoken
-py/newtollm/             Python 包，每课一个文件
-cpp/newtollm/            C++ 库，与 py/newtollm 逐文件对应（.h + .cpp）
+py/torchtwins/             Python 包，每课一个文件
+cpp/torchtwins/            C++ 库，与 py/torchtwins 逐文件对应（.h + .cpp）
 cpp/tools/               parity、bench 可执行文件
 tools/                   parity / 训练 parity / benchmark / @twin 检查 / 站点生成 / lint
 tests/                   pytest（同时驱动 C++ 可执行文件）

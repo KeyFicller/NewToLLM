@@ -1,19 +1,16 @@
+"""Gate: same seed => same weights, same weights => same logits (Python vs C++)."""
+
+from __future__ import annotations
+
 import pytest
 
-from conftest import REPO_ROOT
-
-EXE = REPO_ROOT / "build" / "cpp_impl" / "tools" / "parity_check"
+from parity import PARITY_EXE, run
 
 
-@pytest.mark.skipif(
-    not EXE.exists(), reason="C++ side not built (build/cpp_impl/tools/parity_check)"
-)
+@pytest.mark.skipif(not PARITY_EXE.exists(), reason="C++ side not built")
 @pytest.mark.parametrize("seed", [123, 7])
-def test_small_model_parity(seed):
-    import sys
-
-    sys.path.insert(0, str(REPO_ROOT / "tools"))
-    from parity_check import run_parity
-
-    ok, max_abs = run_parity(full=False, seed=seed, exe=EXE)
-    assert ok, f"max_abs_diff={max_abs}"
+def test_tiny_and_small_presets_agree(seed: int) -> None:
+    results = run(["tiny", "small"], seed)
+    failed = [r for r in results if not r.passed]
+    assert not failed, failed
+    assert {r.check for r in results} == {"init", "forward"}

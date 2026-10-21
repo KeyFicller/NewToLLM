@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# All static gates for NewToLLM v2. Usage: tools/lint.sh [build-dir]
+# All static gates for NewToLLM. Usage: tools/lint.sh [build-dir]
 # Needs: ruff, mypy, clang-format, run-clang-tidy and a configured build dir
 # (cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON) for clang-tidy.
 set -euo pipefail
@@ -9,8 +9,8 @@ CLANG_FORMAT="${CLANG_FORMAT:-clang-format}"
 RUN_CLANG_TIDY="${RUN_CLANG_TIDY:-run-clang-tidy}"
 CLANG_TIDY="${CLANG_TIDY:-clang-tidy}"
 
-echo "== ruff ==";          ruff check py tools/compare_outputs.py tools/check_twins.py tools/parity.py tools/train_parity.py tools/bench.py tools/build_site.py tools/site_*.py tests/test_v2_*.py
-echo "== ruff format ==";   ruff format --check py tools/compare_outputs.py tools/check_twins.py tools/parity.py tools/train_parity.py tools/bench.py tools/build_site.py tools/site_*.py tests/test_v2_*.py
+echo "== ruff ==";          ruff check py tools/compare_outputs.py tools/check_twins.py tools/parity.py tools/train_parity.py tools/bench.py tools/build_site.py tools/site_*.py tests/*.py
+echo "== ruff format ==";   ruff format --check py tools/compare_outputs.py tools/check_twins.py tools/parity.py tools/train_parity.py tools/bench.py tools/build_site.py tools/site_*.py tests/*.py
 echo "== mypy --strict =="; mypy
 echo "== twins ==";         python3 tools/check_twins.py
 echo "== clang-format =="; "$CLANG_FORMAT" --dry-run -Werror cpp/newtollm/*.h cpp/newtollm/*.cpp cpp/tools/*.cpp

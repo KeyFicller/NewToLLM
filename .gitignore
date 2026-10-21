@@ -6,6 +6,7 @@ __pycache__/
 build
 .vscode
 **/.DS_Store
-cpp_impl/vendor/libtorch/
+vendor/libtorch/
+*.egg-info/
 .temp/
 **/.temp/

@@ -81,4 +81,4 @@ docs/results/                   # 实测结果：parity.json、benchmark.json、
 - [x] 4 train（训练步数 288 = 288，逐步 loss 误差 ≤ 2e-6）
 - [x] 5 finetune（分类微调，两边逐行一致）
 - [x] 6 站点（docs/site，Pages 部署）
-- [ ] 7 清理旧代码
+- [x] 7 清理旧代码、重写 README

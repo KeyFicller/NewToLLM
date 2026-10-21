@@ -1,0 +1,101 @@
+# NewToLLM：一个 GPT，写两遍
+
+用 **PyTorch（Python）** 和 **LibTorch（C++）** 各实现一遍同一个小型 GPT。两边文件名、类名、函数名一一对应，
+每课打印的输出逐行相同，权重和 logits 数值一致。可以把它当作 PyTorch ↔ LibTorch 的对照教材。
+
+**👉 并排对照站点：<https://keyficller.github.io/NewToLLM/>**（本地打开 `docs/site/index.html` 也一样）
+
+站点由 `tools/build_site.py` 从源码自动生成：左边 Python、右边 C++，按 `@twin` 代码块对齐，
+API 差异高亮并附解释；结果页的表格和图表全部读自 `docs/results/*.json`。
+
+## 课程
+
+| 课 | 命令 | 内容 | 关键 API 差异 |
+|----|------|------|---------------|
+| 01 | `tensors` | 创建、形状、view/reshape、广播、matmul、索引 | `x[:, 1:]` ↔ `x.index({Slice(), Slice(1, None)})`，`(2, 3)` ↔ `{2, 3}` |
+| 02 | `autograd` | requires_grad、backward、手写 SGD、no_grad | `with torch.no_grad()` ↔ `torch::NoGradGuard` |
+| 03 | `modules` | GELU、LayerNorm、FeedForward | `nn.Module` ↔ `torch::nn::Module` + `TORCH_MODULE`，`register_module` |
+| 04 | `attention` | 因果多头注意力，mask 作为 buffer | `register_buffer`、`masked_fill`、`transpose` |
+| 05 | `gpt` | TransformerBlock、GPTModel、贪心生成 | `nn.Sequential` ↔ `->forward()`，`ModuleList` |
+| 06 | `data` / `train` | GPT-2 BPE、滑动窗口、确定性 batch、AdamW 训练 | `DataLoader` ↔ 两边相同的手写 batch 迭代 |
+| 07 | `finetune` | 垃圾短信分类：换分类头、冻结参数、准确率 | `requires_grad_(False)`，替换子模块 |
+
+另有三个基础设施"双胞胎"：`config`（共享 `configs/presets.json`）、`tokenizer`（离线 GPT-2 BPE）、`report`（统一输出格式）。
+
+## 快速开始
+
+### Python（PyTorch）
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install -e ".[dev]"
+python -m newtollm list          # 列出所有课程
+python -m newtollm tensors       # 运行第 01 课
+python -m newtollm train --preset tiny
+```
+
+### C++（LibTorch ≥ 2.10）
+
+```bash
+# 下载 CPU 版 LibTorch，解压到 vendor/libtorch（或用 -DLIBTORCH_VENDOR_PATH 指定位置）
+curl -sSL -o libtorch.zip "https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-2.10.0%2Bcpu.zip"
+mkdir -p vendor && unzip -q libtorch.zip -d vendor
+
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build -j
+./build/bin/newtollm tensors     # 和 python -m newtollm tensors 输出逐行相同
+```
+
+### 跑一遍全部门禁
+
+```bash
+tools/lint.sh build                    # ruff、mypy --strict、@twin 检查、clang-format、clang-tidy
+ctest --test-dir build                 # C++ 冒烟测试
+python -m pytest tests                 # 两边课程输出 diff、数值 parity、训练曲线 parity
+python tools/parity.py                 # 权重初始化 + 前向 logits 对比
+python tools/train_parity.py           # 逐步 loss 对比
+python tools/build_site.py --check     # 站点与源码同步
+```
+
+## 实测结果
+
+数据来自 `docs/results/`（PyTorch 2.14.1，LibTorch 2.10.0，Linux x86_64，CPU，4 线程）。
+
+**数值一致性**（容差 1e-4）
+
+| 模型 | 同种子初始化：权重最大误差 | 同权重前向：logits 最大误差 |
+|------|---------------------------|-----------------------------|
+| tiny | 0 | 0 |
+| small | 0 | 7.2e-07 |
+| gpt2（124M 结构） | 0 | 1.7e-06 |
+
+**训练一致性**：tiny 配置、seed 123，两边都训练 288 步；逐步训练 loss 最大误差 1.9e-06，验证 loss 最大误差 4.8e-07。
+
+**速度**（预热 5 次，取 30 次平均，单位 ms）
+
+| 模型 | batch × 长度 | 前向 Python | 前向 C++ | 训练一步 Python | 训练一步 C++ |
+|------|-------------|------------|----------|----------------|-------------|
+| tiny | 4 × 32 | 1.53 | 1.34 | 27.5 | 24.8 |
+| small | 2 × 256 | 27.9 | 33.0 | 160.6 | 163.6 |
+
+两边调用的是同一套 ATen 算子，速度差距不大；两边版本不同，又是在共享机器上测的，这些数字只说明"差不多"，不说明谁更快。
+
+## 目录结构
+
+```
+configs/presets.json     共享配置（tiny / small / gpt2）
+assets/                  语料、垃圾短信数据集、gpt2.tiktoken
+py/newtollm/             Python 包，每课一个文件
+cpp/newtollm/            C++ 库，与 py/newtollm 逐文件对应（.h + .cpp）
+cpp/tools/               parity、bench 可执行文件
+tools/                   parity / 训练 parity / benchmark / @twin 检查 / 站点生成 / lint
+tests/                   pytest（同时驱动 C++ 可执行文件）
+docs/site/               生成的对照站点（GitHub Pages）
+docs/results/            实测结果 JSON
+docs/REDESIGN_PLAN.md    设计方案
+```
+
+## 已知差距
+
+- 只在 Linux CPU 上验证过，macOS 和 CUDA 没测。
+- 指令微调和加载 OpenAI GPT-2 预训练权重不在课程范围内。

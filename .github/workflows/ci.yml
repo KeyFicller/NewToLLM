@@ -27,15 +27,15 @@ jobs:
         id: libtorch-cache
         uses: actions/cache@v4
         with:
-          path: cpp_impl/vendor/libtorch
+          path: vendor/libtorch
           key: libtorch-cpu-${{ env.LIBTORCH_VERSION }}
 
       - name: Download LibTorch (CPU)
         if: steps.libtorch-cache.outputs.cache-hit != 'true'
         run: |
           curl -sSL -o libtorch.zip "https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-${LIBTORCH_VERSION}%2Bcpu.zip"
-          mkdir -p cpp_impl/vendor
-          unzip -q libtorch.zip -d cpp_impl/vendor
+          mkdir -p vendor
+          unzip -q libtorch.zip -d vendor
           rm libtorch.zip
 
       - name: Build C++ side
@@ -56,13 +56,8 @@ jobs:
       - name: CTest (C++)
         run: ctest --test-dir build --output-on-failure
 
-      - name: pytest (lesson transcripts, tokenizer, twins, legacy parity)
+      - name: pytest (lesson transcripts, parity, training curves)
         run: python -m pytest -v tests
 
       - name: Comparison site is up to date
         run: python tools/build_site.py --check
-
-      - name: Python smoke tasks
-        run: |
-          python main.py brief
-          python main.py toy_model --small

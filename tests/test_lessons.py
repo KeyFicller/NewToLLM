@@ -1,4 +1,4 @@
-"""v2 gates: every lesson prints the same transcript in Python and C++."""
+"""Gate: every lesson prints the same transcript in Python and C++."""
 
 from __future__ import annotations
 

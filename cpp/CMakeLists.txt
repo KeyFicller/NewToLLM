@@ -13,6 +13,7 @@ set(NEWTOLLM_SOURCES
     newtollm/gpt.cpp
     newtollm/data.cpp
     newtollm/train.cpp
+    newtollm/finetune.cpp
 )
 
 add_library(newtollm_lib STATIC ${NEWTOLLM_SOURCES})
@@ -31,7 +32,7 @@ add_executable(newtollm newtollm/main.cpp)
 target_link_libraries(newtollm PRIVATE newtollm_lib)
 set_target_properties(newtollm PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-foreach(lesson tensors autograd modules attention gpt data train)
+foreach(lesson tensors autograd modules attention gpt data train finetune)
   add_test(NAME v2_${lesson} COMMAND newtollm ${lesson})
 endforeach()
 add_test(NAME v2_unknown_lesson COMMAND newtollm no_such_lesson)

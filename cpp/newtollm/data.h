@@ -20,7 +20,7 @@ namespace newtollm {
 // @twin Windows
 struct Windows {
   torch::Tensor inputs;   // [num_windows, context_length] int64
-  torch::Tensor targets;  // same shape, shifted by one token
+  torch::Tensor targets;  // next tokens (same shape) - or class labels [n] in lesson 07
 
   [[nodiscard]] int64_t size() const { return inputs.size(0); }
 };

@@ -35,6 +35,16 @@ class TrainConfig:
     train_ratio: float
 
 
+# @twin FinetuneConfig
+@dataclass(frozen=True)
+class FinetuneConfig:
+    examples_per_class: int
+    batch_size: int
+    learning_rate: float
+    weight_decay: float
+    num_epochs: int
+
+
 # @twin Preset
 @dataclass(frozen=True)
 class Preset:
@@ -42,6 +52,7 @@ class Preset:
     seed: int
     model: GPTConfig
     train: TrainConfig
+    finetune: FinetuneConfig
 
     def with_seed(self, seed: int) -> Preset:
         return replace(self, seed=seed)
@@ -60,4 +71,5 @@ def load_preset(name: str, path: Path = DEFAULT_CONFIG_PATH) -> Preset:
         seed=int(root["seed"]),
         model=GPTConfig(**entry["model"]),
         train=TrainConfig(**entry["train"]),
+        finetune=FinetuneConfig(**entry["finetune"]),
     )

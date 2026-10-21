@@ -49,6 +49,10 @@ class GPTModel(nn.Module):
         logits: torch.Tensor = self.out_head(x)
         return logits
 
+    def replace_head(self, num_outputs: int) -> None:
+        """Swap the vocabulary projection for a fresh ``num_outputs``-way head (lesson 07)."""
+        self.out_head = nn.Linear(self.out_head.in_features, num_outputs)
+
 
 # @twin generate_greedy
 def generate_greedy(

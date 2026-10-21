@@ -32,12 +32,22 @@ struct TrainConfig {
   double train_ratio = 0.0;
 };
 
+// @twin FinetuneConfig
+struct FinetuneConfig {
+  int64_t examples_per_class = 0;
+  int64_t batch_size = 0;
+  double learning_rate = 0.0;
+  double weight_decay = 0.0;
+  int64_t num_epochs = 0;
+};
+
 // @twin Preset
 struct Preset {
   std::string name;
   uint64_t seed = 0;
   GPTConfig model;
   TrainConfig train;
+  FinetuneConfig finetune;
 
   [[nodiscard]] Preset with_seed(uint64_t new_seed) const {
     Preset copy = *this;

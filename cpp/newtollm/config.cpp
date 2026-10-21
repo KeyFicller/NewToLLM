@@ -24,6 +24,7 @@ Preset load_preset(const std::string& name, const std::filesystem::path& path) {
   }
   const auto& model = presets.at(name).at("model");
   const auto& train = presets.at(name).at("train");
+  const auto& finetune = presets.at(name).at("finetune");
   return Preset{
       .name = name,
       .seed = root.at("seed").get<uint64_t>(),
@@ -46,6 +47,14 @@ Preset load_preset(const std::string& name, const std::filesystem::path& path) {
               .num_epochs = train.at("num_epochs").get<int64_t>(),
               .eval_every = train.at("eval_every").get<int64_t>(),
               .train_ratio = train.at("train_ratio").get<double>(),
+          },
+      .finetune =
+          FinetuneConfig{
+              .examples_per_class = finetune.at("examples_per_class").get<int64_t>(),
+              .batch_size = finetune.at("batch_size").get<int64_t>(),
+              .learning_rate = finetune.at("learning_rate").get<double>(),
+              .weight_decay = finetune.at("weight_decay").get<double>(),
+              .num_epochs = finetune.at("num_epochs").get<int64_t>(),
           },
   };
 }

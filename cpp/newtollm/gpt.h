@@ -31,6 +31,8 @@ class GPTModelImpl : public torch::nn::Module {
  public:
   explicit GPTModelImpl(const GPTConfig& cfg);
   torch::Tensor forward(const torch::Tensor& idx);
+  // Swap the vocabulary projection for a fresh `num_outputs`-way head (lesson 07).
+  void replace_head(int64_t num_outputs);
 
  private:
   torch::nn::Embedding tok_emb_;

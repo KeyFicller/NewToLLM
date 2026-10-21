@@ -26,12 +26,17 @@ class LayerNorm(nn.Module):
     def __init__(self, emb_dim: int, eps: float = 1e-5) -> None:
         super().__init__()
         self.eps = eps
+        # nn.Parameter = a tensor the module owns AND the optimizer should train.
+        # Assigning it as an attribute registers it automatically.
         self.scale = nn.Parameter(torch.ones(emb_dim))
         self.shift = nn.Parameter(torch.zeros(emb_dim))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # @step stats: 均值与方差
+        # Normalise over the embedding dim only: (batch, tokens, emb) -> (batch, tokens, 1).
+        # keepdim=True keeps the trailing 1 so the result broadcasts back against x.
         mean = x.mean(dim=-1, keepdim=True)
+        # unbiased=False divides by N, not N-1 - this matches GPT-2's LayerNorm.
         var = x.var(dim=-1, keepdim=True, unbiased=False)
         # @step normalize: 标准化再仿射
         return self.scale * (x - mean) / torch.sqrt(var + self.eps) + self.shift
@@ -43,6 +48,8 @@ class FeedForward(nn.Module):
     def __init__(self, emb_dim: int) -> None:
         super().__init__()
         self.layers = nn.Sequential(
+            # Expand to 4x width, apply the non-linearity there, project back:
+            # (batch, tokens, emb) -> (batch, tokens, 4*emb) -> (batch, tokens, emb).
             nn.Linear(emb_dim, 4 * emb_dim),
             GELU(),
             nn.Linear(4 * emb_dim, emb_dim),

@@ -27,6 +27,9 @@ class TransformerBlock(nn.Module):
 
     # @step residual: Pre-LN 残差
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Pre-LN residual: normalise the input to each sub-layer, then *add* its output
+        # back. The identity path gives gradients a straight road through deep stacks.
+        # Shape stays (batch, tokens, emb_dim) throughout.
         x = x + self.drop_shortcut(self.att(self.norm1(x)))
         out: torch.Tensor = x + self.drop_shortcut(self.ff(self.norm2(x)))
         return out
@@ -53,9 +56,12 @@ class GPTModel(nn.Module):
     def forward(self, idx: torch.Tensor) -> torch.Tensor:
         tokens = idx.shape[1]
         positions = torch.arange(tokens, device=idx.device)
+        # idx (batch, tokens) -> tok_emb (batch, tokens, emb); pos_emb (tokens, emb)
+        # broadcasts over the batch. Attention is order-blind, so position must be added.
         x = self.drop_emb(self.tok_emb(idx) + self.pos_emb(positions))
         # @step stack: 过 N 个块 + LayerNorm + 输出头
         x = self.final_norm(self.trf_blocks(x))
+        # (batch, tokens, emb) -> (batch, tokens, vocab): one next-token score per position.
         logits: torch.Tensor = self.out_head(x)
         return logits
 
@@ -70,10 +76,14 @@ def generate_greedy(
     model: GPTModel, idx: torch.Tensor, max_new_tokens: int, context_length: int
 ) -> torch.Tensor:
     # @step eval: 推理模式
+    # eval() switches dropout off (a mode flag, not grad); no_grad() stops graph
+    # building. Inference wants both.
     model.eval()
     with torch.no_grad():
         for _ in range(max_new_tokens):
             # @step crop: 截上下文、取最后一位
+            # Keep at most context_length tokens (the position table's size), then take only
+            # the last position's logits: (batch, tokens, vocab) -> (batch, vocab).
             logits = model(idx[:, -context_length:])[:, -1, :]
             # @step pick: 贪心选词并拼接
             next_id = logits.argmax(dim=-1, keepdim=True)

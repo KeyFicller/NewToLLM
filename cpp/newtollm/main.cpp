@@ -1,8 +1,10 @@
 // CLI - mirrors py/newtollm/__main__.py.
 //
 //   newtollm <lesson> [--preset tiny|small|gpt2] [--seed N]
+#include "newtollm/attention.h"
 #include "newtollm/autograd.h"
 #include "newtollm/config.h"
+#include "newtollm/gpt.h"
 #include "newtollm/modules.h"
 #include "newtollm/tensors.h"
 #include "newtollm/tokenizer.h"
@@ -26,7 +28,7 @@ struct Lesson {
   std::function<void(const newtollm::Preset&)> run;
 };
 
-const std::array<Lesson, 3> kLessons = {{
+const std::array<Lesson, 5> kLessons = {{
     {.name = "tensors",
      .description = "01 creation, shapes, indexing, broadcasting",
      .run = newtollm::run_tensors},
@@ -36,6 +38,10 @@ const std::array<Lesson, 3> kLessons = {{
     {.name = "modules",
      .description = "03 GELU, LayerNorm, FeedForward",
      .run = newtollm::run_modules},
+    {.name = "attention",
+     .description = "04 causal multi-head self-attention",
+     .run = newtollm::run_attention},
+    {.name = "gpt", .description = "05 GPT model and greedy generation", .run = newtollm::run_gpt},
 }};
 
 void tokenize_file(const std::string& path) {

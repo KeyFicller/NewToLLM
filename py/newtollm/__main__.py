@@ -10,8 +10,10 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+from newtollm.attention import run_attention
 from newtollm.autograd import run_autograd
 from newtollm.config import Preset, load_preset
+from newtollm.gpt import run_gpt
 from newtollm.modules import run_modules
 from newtollm.tensors import run_tensors
 from newtollm.tokenizer import Tokenizer
@@ -20,6 +22,8 @@ LESSONS: dict[str, tuple[str, Callable[[Preset], None]]] = {
     "tensors": ("01 creation, shapes, indexing, broadcasting", run_tensors),
     "autograd": ("02 gradients, no_grad, hand-written SGD", run_autograd),
     "modules": ("03 GELU, LayerNorm, FeedForward", run_modules),
+    "attention": ("04 causal multi-head self-attention", run_attention),
+    "gpt": ("05 GPT model and greedy generation", run_gpt),
 }
 
 

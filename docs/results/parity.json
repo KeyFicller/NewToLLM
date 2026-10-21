@@ -1,0 +1,50 @@
+{
+  "pytorch": "2.14.1+cu130",
+  "libtorch": "2.10.0",
+  "machine": "Linux x86_64",
+  "atol": 0.0001,
+  "results": [
+    {
+      "preset": "tiny",
+      "check": "init",
+      "tensors": 31,
+      "max_abs_diff": 0.0,
+      "passed": true
+    },
+    {
+      "preset": "tiny",
+      "check": "forward",
+      "tensors": 31,
+      "max_abs_diff": 0.0,
+      "passed": true
+    },
+    {
+      "preset": "small",
+      "check": "init",
+      "tensors": 31,
+      "max_abs_diff": 0.0,
+      "passed": true
+    },
+    {
+      "preset": "small",
+      "check": "forward",
+      "tensors": 31,
+      "max_abs_diff": 7.152557373046875e-07,
+      "passed": true
+    },
+    {
+      "preset": "gpt2",
+      "check": "init",
+      "tensors": 161,
+      "max_abs_diff": 0.0,
+      "passed": true
+    },
+    {
+      "preset": "gpt2",
+      "check": "forward",
+      "tensors": 161,
+      "max_abs_diff": 1.6689300537109375e-06,
+      "passed": true
+    }
+  ]
+}

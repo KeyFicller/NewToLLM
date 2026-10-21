@@ -65,6 +65,7 @@ torch::Tensor GPTModelImpl::forward(const torch::Tensor& idx) {
   // @step stack
   // Sequential::forward is a template in LibTorch: name the return type explicitly.
   x = final_norm_(trf_blocks_->forward<torch::Tensor>(x));
+  // (batch, tokens, emb) -> (batch, tokens, vocab): one next-token score per position.
   return out_head_(x);
 }
 

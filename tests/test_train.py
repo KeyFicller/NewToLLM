@@ -1,4 +1,4 @@
-"""v2 gate: both sides build the same batches and follow the same loss curve."""
+"""Gate: both sides build the same batches and follow the same loss curve."""
 
 from __future__ import annotations
 

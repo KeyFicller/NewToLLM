@@ -1,5 +1,4 @@
-# NewToLLM v2 C++ side: one library mirroring py/newtollm, plus the CLI.
-list(APPEND CMAKE_PREFIX_PATH ${LIBTORCH_VENDOR_PATH})
+# NewToLLM C++ side: one library mirroring py/newtollm, plus the CLI.
 find_package(Torch REQUIRED)
 
 set(NEWTOLLM_SOURCES
@@ -33,18 +32,18 @@ target_link_libraries(newtollm PRIVATE newtollm_lib)
 set_target_properties(newtollm PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 foreach(lesson tensors autograd modules attention gpt data train finetune)
-  add_test(NAME v2_${lesson} COMMAND newtollm ${lesson})
+  add_test(NAME ${lesson} COMMAND newtollm ${lesson})
 endforeach()
-add_test(NAME v2_unknown_lesson COMMAND newtollm no_such_lesson)
+add_test(NAME unknown_lesson COMMAND newtollm no_such_lesson)
 set_tests_properties(v2_unknown_lesson PROPERTIES WILL_FAIL TRUE)
 
 add_executable(parity tools/parity.cpp)
 target_link_libraries(parity PRIVATE newtollm_lib)
 set_target_properties(parity PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-add_test(NAME v2_parity_usage COMMAND parity)
+add_test(NAME parity_usage COMMAND parity)
 set_tests_properties(v2_parity_usage PROPERTIES WILL_FAIL TRUE)
 
 add_executable(bench tools/bench.cpp)
 target_link_libraries(bench PRIVATE newtollm_lib)
 set_target_properties(bench PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-add_test(NAME v2_bench_smoke COMMAND bench tiny 1 1 2)
+add_test(NAME bench_smoke COMMAND bench tiny 1 1 2)

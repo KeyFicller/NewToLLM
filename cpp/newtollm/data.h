@@ -32,8 +32,9 @@ using Batch = std::pair<torch::Tensor, torch::Tensor>;
 [[nodiscard]] Windows make_windows(const torch::Tensor& ids, int64_t context_length,
                                    int64_t stride);
 // Python yields lazily; a vector of views is the idiomatic eager C++ equivalent.
-[[nodiscard]] std::vector<Batch> batches(const Windows& windows, int64_t batch_size,
-                                         std::optional<at::Generator> generator = std::nullopt);
+[[nodiscard]] std::vector<Batch> batches(
+    const Windows& windows, int64_t batch_size,
+    const std::optional<at::Generator>& generator = std::nullopt);
 
 // @twin Dataset
 struct Dataset {

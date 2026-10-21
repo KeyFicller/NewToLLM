@@ -49,10 +49,10 @@ Windows make_windows(const torch::Tensor& ids, int64_t context_length, int64_t s
 
 // @twin batches
 std::vector<Batch> batches(const Windows& windows, int64_t batch_size,
-                           std::optional<at::Generator> generator) {
+                           const std::optional<at::Generator>& generator) {
   // Full batches only (drop_last); shuffle with randperm when given a generator.
   const auto n = windows.size();
-  const auto order = generator ? torch::randperm(n, *generator, torch::kLong) : torch::arange(n);
+  const auto order = generator ? torch::randperm(n, generator, torch::kLong) : torch::arange(n);
   std::vector<Batch> out;
   for (int64_t start = 0; start + batch_size <= n; start += batch_size) {
     const auto idx = order.index({Slice(start, start + batch_size)});

@@ -100,7 +100,9 @@ def run_train(preset: Preset, curve_path: Path | None = None) -> None:
     report.section("after training")
     report.scalar("val loss", evaluate(model, data.val, preset.train.batch_size))
     prompt = torch.tensor([tokenizer.encode("Every effort moves you")])
-    out = generate_greedy(model, prompt, max_new_tokens=8, context_length=preset.model.context_length)
+    out = generate_greedy(
+        model, prompt, max_new_tokens=8, context_length=preset.model.context_length
+    )
     report.show("generated ids", out)
     if curve_path is not None:
         save_history(history, curve_path)

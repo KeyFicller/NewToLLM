@@ -42,3 +42,8 @@ target_link_libraries(parity PRIVATE newtollm_lib)
 set_target_properties(parity PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_test(NAME v2_parity_usage COMMAND parity)
 set_tests_properties(v2_parity_usage PROPERTIES WILL_FAIL TRUE)
+
+add_executable(bench tools/bench.cpp)
+target_link_libraries(bench PRIVATE newtollm_lib)
+set_target_properties(bench PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+add_test(NAME v2_bench_smoke COMMAND bench tiny 1 1 2)

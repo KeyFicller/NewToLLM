@@ -64,9 +64,7 @@ def batches(
 
 
 # @twin load_dataset
-def load_dataset(
-    preset: Preset, tokenizer: Tokenizer, path: Path = DEFAULT_TEXT_PATH
-) -> Dataset:
+def load_dataset(preset: Preset, tokenizer: Tokenizer, path: Path = DEFAULT_TEXT_PATH) -> Dataset:
     ids = torch.tensor(tokenizer.encode(path.read_text(encoding="utf-8")))
     train_ids, val_ids = split_ids(ids, preset.train.train_ratio)
     ctx, stride = preset.model.context_length, preset.train.stride

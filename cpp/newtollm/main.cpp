@@ -68,7 +68,8 @@ void tokenize_file(const std::string& path) {
 }
 
 int usage(int code) {
-  std::cerr << "usage: newtollm <lesson|list|tokenize FILE> [--preset NAME] [--seed N] [--curve FILE]\n";
+  std::cerr
+      << "usage: newtollm <lesson|list|tokenize FILE> [--preset NAME] [--seed N] [--curve FILE]\n";
   return code;
 }
 

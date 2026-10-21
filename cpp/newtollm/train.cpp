@@ -65,17 +65,19 @@ TrainHistory train_model(GPTModel& model, const Preset& preset, const Windows& t
       }
     }
   }
-  history.seconds =
-      std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+  history.seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
   return history;
 }
 
 // @twin save_history
 void save_history(const TrainHistory& history, const std::filesystem::path& path) {
   const nlohmann::json json = {
-      {"steps", history.steps},           {"train_loss", history.train_loss},
-      {"eval_steps", history.eval_steps}, {"val_loss", history.val_loss},
-      {"tokens_seen", history.tokens_seen}, {"seconds", history.seconds},
+      {"steps", history.steps},
+      {"train_loss", history.train_loss},
+      {"eval_steps", history.eval_steps},
+      {"val_loss", history.val_loss},
+      {"tokens_seen", history.tokens_seen},
+      {"seconds", history.seconds},
   };
   std::ofstream(path) << json.dump() << '\n';
 }

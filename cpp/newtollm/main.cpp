@@ -1,13 +1,15 @@
 // CLI - mirrors py/newtollm/__main__.py.
 //
-//   newtollm <lesson> [--preset tiny|small|gpt2] [--seed N]
+//   newtollm <lesson> [--preset tiny|small|gpt2] [--seed N] [--curve FILE]
 #include "newtollm/attention.h"
 #include "newtollm/autograd.h"
 #include "newtollm/config.h"
+#include "newtollm/data.h"
 #include "newtollm/gpt.h"
 #include "newtollm/modules.h"
 #include "newtollm/tensors.h"
 #include "newtollm/tokenizer.h"
+#include "newtollm/train.h"
 
 #include <array>
 #include <exception>
@@ -28,7 +30,7 @@ struct Lesson {
   std::function<void(const newtollm::Preset&)> run;
 };
 
-const std::array<Lesson, 5> kLessons = {{
+const std::array<Lesson, 7> kLessons = {{
     {.name = "tensors",
      .description = "01 creation, shapes, indexing, broadcasting",
      .run = newtollm::run_tensors},
@@ -42,6 +44,12 @@ const std::array<Lesson, 5> kLessons = {{
      .description = "04 causal multi-head self-attention",
      .run = newtollm::run_attention},
     {.name = "gpt", .description = "05 GPT model and greedy generation", .run = newtollm::run_gpt},
+    {.name = "data",
+     .description = "06 tokens, train/val split, windows, batches",
+     .run = newtollm::run_data},
+    {.name = "train",
+     .description = "06 pre-training with AdamW, loss curves",
+     .run = [](const newtollm::Preset& preset) { newtollm::run_train(preset); }},
 }};
 
 void tokenize_file(const std::string& path) {
@@ -60,7 +68,8 @@ void tokenize_file(const std::string& path) {
 }
 
 int usage(int code) {
-  std::cerr << "usage: newtollm <lesson|list|tokenize FILE> [--preset NAME] [--seed N]\n";
+  std::cerr
+      << "usage: newtollm <lesson|list|tokenize FILE> [--preset NAME] [--seed N] [--curve FILE]\n";
   return code;
 }
 
@@ -69,12 +78,15 @@ int run(int argc, char** argv) {
   std::optional<std::string> path;
   std::string preset_name = "tiny";
   std::optional<uint64_t> seed;
+  std::optional<std::string> curve;
   for (int i = 1; i < argc; ++i) {
     const std::string_view arg = argv[i];
     if (arg == "--preset" && i + 1 < argc) {
       preset_name = argv[++i];
     } else if (arg == "--seed" && i + 1 < argc) {
       seed = std::stoull(argv[++i]);
+    } else if (arg == "--curve" && i + 1 < argc) {
+      curve = argv[++i];
     } else if (arg.starts_with("-")) {
       return usage(2);
     } else if (!command) {
@@ -102,6 +114,10 @@ int run(int argc, char** argv) {
   auto preset = newtollm::load_preset(preset_name);
   if (seed) {
     preset = preset.with_seed(*seed);
+  }
+  if (*command == "train") {
+    newtollm::run_train(preset, curve);
+    return 0;
   }
   for (const auto& lesson : kLessons) {
     if (lesson.name == *command) {

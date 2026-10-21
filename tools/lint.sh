@@ -9,8 +9,8 @@ CLANG_FORMAT="${CLANG_FORMAT:-clang-format}"
 RUN_CLANG_TIDY="${RUN_CLANG_TIDY:-run-clang-tidy}"
 CLANG_TIDY="${CLANG_TIDY:-clang-tidy}"
 
-echo "== ruff ==";          ruff check py tools/compare_outputs.py tools/check_twins.py tools/parity.py tests/test_v2_*.py
-echo "== ruff format ==";   ruff format --check py tools/compare_outputs.py tools/check_twins.py tools/parity.py tests/test_v2_*.py
+echo "== ruff ==";          ruff check py tools/compare_outputs.py tools/check_twins.py tools/parity.py tools/train_parity.py tools/bench.py tests/test_v2_*.py
+echo "== ruff format ==";   ruff format --check py tools/compare_outputs.py tools/check_twins.py tools/parity.py tools/train_parity.py tools/bench.py tests/test_v2_*.py
 echo "== mypy --strict =="; mypy
 echo "== twins ==";         python3 tools/check_twins.py
 echo "== clang-format =="; "$CLANG_FORMAT" --dry-run -Werror cpp/newtollm/*.h cpp/newtollm/*.cpp cpp/tools/*.cpp

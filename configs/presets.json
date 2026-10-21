@@ -4,7 +4,7 @@
   "presets": {
     "tiny": {
       "model": {"vocab_size": 50257, "context_length": 32, "emb_dim": 32, "n_heads": 2, "n_layers": 2, "drop_rate": 0.0, "qkv_bias": false},
-      "train": {"batch_size": 4, "stride": 32, "learning_rate": 0.0004, "weight_decay": 0.1, "num_epochs": 1, "eval_every": 5, "train_ratio": 0.9}
+      "train": {"batch_size": 4, "stride": 32, "learning_rate": 0.0004, "weight_decay": 0.1, "num_epochs": 8, "eval_every": 24, "train_ratio": 0.9}
     },
     "small": {
       "model": {"vocab_size": 50257, "context_length": 256, "emb_dim": 128, "n_heads": 4, "n_layers": 2, "drop_rate": 0.1, "qkv_bias": false},

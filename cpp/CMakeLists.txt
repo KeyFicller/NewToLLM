@@ -11,6 +11,8 @@ set(NEWTOLLM_SOURCES
     newtollm/modules.cpp
     newtollm/attention.cpp
     newtollm/gpt.cpp
+    newtollm/data.cpp
+    newtollm/train.cpp
 )
 
 add_library(newtollm_lib STATIC ${NEWTOLLM_SOURCES})
@@ -29,7 +31,7 @@ add_executable(newtollm newtollm/main.cpp)
 target_link_libraries(newtollm PRIVATE newtollm_lib)
 set_target_properties(newtollm PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-foreach(lesson tensors autograd modules attention gpt)
+foreach(lesson tensors autograd modules attention gpt data train)
   add_test(NAME v2_${lesson} COMMAND newtollm ${lesson})
 endforeach()
 add_test(NAME v2_unknown_lesson COMMAND newtollm no_such_lesson)
@@ -40,3 +42,8 @@ target_link_libraries(parity PRIVATE newtollm_lib)
 set_target_properties(parity PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_test(NAME v2_parity_usage COMMAND parity)
 set_tests_properties(v2_parity_usage PROPERTIES WILL_FAIL TRUE)
+
+add_executable(bench tools/bench.cpp)
+target_link_libraries(bench PRIVATE newtollm_lib)
+set_target_properties(bench PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+add_test(NAME v2_bench_smoke COMMAND bench tiny 1 1 2)

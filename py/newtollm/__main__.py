@@ -1,6 +1,6 @@
 """CLI - mirrors ``cpp/newtollm/main.cpp``.
 
-python -m newtollm <lesson> [--preset tiny|small|gpt2] [--seed N]
+python -m newtollm <lesson> [--preset tiny|small|gpt2] [--seed N] [--curve FILE]
 """
 
 from __future__ import annotations
@@ -13,10 +13,12 @@ from pathlib import Path
 from newtollm.attention import run_attention
 from newtollm.autograd import run_autograd
 from newtollm.config import Preset, load_preset
+from newtollm.data import run_data
 from newtollm.gpt import run_gpt
 from newtollm.modules import run_modules
 from newtollm.tensors import run_tensors
 from newtollm.tokenizer import Tokenizer
+from newtollm.train import run_train
 
 LESSONS: dict[str, tuple[str, Callable[[Preset], None]]] = {
     "tensors": ("01 creation, shapes, indexing, broadcasting", run_tensors),
@@ -24,6 +26,8 @@ LESSONS: dict[str, tuple[str, Callable[[Preset], None]]] = {
     "modules": ("03 GELU, LayerNorm, FeedForward", run_modules),
     "attention": ("04 causal multi-head self-attention", run_attention),
     "gpt": ("05 GPT model and greedy generation", run_gpt),
+    "data": ("06 tokens, train/val split, windows, batches", run_data),
+    "train": ("06 pre-training with AdamW, loss curves", run_train),
 }
 
 
@@ -39,6 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("path", nargs="?", type=Path, help="file for 'tokenize'")
     parser.add_argument("--preset", default="tiny")
     parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--curve", type=Path, default=None, help="train: write loss curve JSON")
     args = parser.parse_args(argv)
 
     if args.lesson == "list":
@@ -54,7 +59,10 @@ def main(argv: list[str] | None = None) -> int:
     preset = load_preset(args.preset)
     if args.seed is not None:
         preset = preset.with_seed(args.seed)
-    LESSONS[args.lesson][1](preset)
+    if args.lesson == "train":
+        run_train(preset, args.curve)
+    else:
+        LESSONS[args.lesson][1](preset)
     return 0
 
 

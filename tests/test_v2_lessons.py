@@ -13,7 +13,7 @@ from compare_outputs import compare_lines
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CPP_CLI = REPO_ROOT / "build" / "bin" / "newtollm"
-LESSONS = ["tensors", "autograd", "modules", "attention", "gpt"]
+LESSONS = ["tensors", "autograd", "modules", "attention", "gpt", "data", "train"]
 
 needs_cpp = pytest.mark.skipif(not CPP_CLI.exists(), reason="C++ side not built")
 

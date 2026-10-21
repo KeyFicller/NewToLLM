@@ -1,12 +1,24 @@
-.venv
-assets/reference.pdf
+# Build outputs
+build/
+build-*/
+cmake-build-*/
+compile_commands.json
+
+# Python
 __pycache__/
-*.pyc
-.cache
-build
-.vscode
-**/.DS_Store
-vendor/libtorch/
+*.py[cod]
 *.egg-info/
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Local tooling / OS
+.cache/
+.vscode/
+.idea/
+**/.DS_Store
 .temp/
-**/.temp/
+
+# Local LibTorch install (pass -DTorch_DIR instead)
+vendor/libtorch/

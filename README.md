@@ -93,7 +93,6 @@ tools/                   parity / 训练 parity / benchmark / @twin 检查 / 站
 tests/                   pytest（同时驱动 C++ 可执行文件）
 docs/site/               生成的对照站点（GitHub Pages）
 docs/results/            实测结果 JSON
-docs/REDESIGN_PLAN.md    设计方案
 ```
 
 ## 已知差距

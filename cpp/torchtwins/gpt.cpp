@@ -23,6 +23,9 @@ TransformerBlockImpl::TransformerBlockImpl(const GPTConfig& cfg)
 
 // @step residual
 torch::Tensor TransformerBlockImpl::forward(torch::Tensor x) {
+  // Pre-LN residual: normalise the input to each sub-layer, then *add* its output
+  // back. The identity path gives gradients a straight road through deep stacks.
+  // Shape stays (batch, tokens, emb_dim) throughout.
   x = x + drop_shortcut_(att_(norm1_(x)));
   return x + drop_shortcut_(ff_(norm2_(x)));
 }
@@ -56,9 +59,13 @@ GPTModelImpl::GPTModelImpl(const GPTConfig& cfg)
 torch::Tensor GPTModelImpl::forward(const torch::Tensor& idx) {
   const auto tokens = idx.size(1);
   const auto positions = torch::arange(tokens, idx.options().dtype(torch::kLong));
+  // idx (batch, tokens) -> tok_emb (batch, tokens, emb); pos_emb (tokens, emb)
+  // broadcasts over the batch. Attention is order-blind, so position must be added.
   auto x = drop_emb_(tok_emb_(idx) + pos_emb_(positions));
   // @step stack
+  // Sequential::forward is a template in LibTorch: name the return type explicitly.
   x = final_norm_(trf_blocks_->forward<torch::Tensor>(x));
+  // (batch, tokens, emb) -> (batch, tokens, vocab): one next-token score per position.
   return out_head_(x);
 }
 
@@ -74,10 +81,15 @@ void GPTModelImpl::replace_head(int64_t num_outputs) {
 torch::Tensor generate_greedy(GPTModel& model, torch::Tensor idx, int64_t max_new_tokens,
                               int64_t context_length) {
   // @step eval
+  // eval() switches dropout off (a mode flag, not grad); NoGradGuard stops graph
+  // building for the rest of this function. Inference wants both.
   model->eval();
   const torch::NoGradGuard no_grad;
   for (int64_t i = 0; i < max_new_tokens; ++i) {
     // @step crop
+    // Keep at most context_length tokens (the position table's size), then take only
+    // the last position's logits: (batch, tokens, vocab) -> (batch, vocab).
+    // Python's negative slice start is clamped by hand here.
     const auto start = std::max<int64_t>(0, idx.size(1) - context_length);
     const auto logits = model(idx.index({Slice(), Slice(start, None)})).index({Slice(), -1});
     // @step pick

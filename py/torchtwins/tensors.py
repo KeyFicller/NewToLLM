@@ -12,6 +12,8 @@ from torchtwins.config import Preset
 def create(seed: int) -> torch.Tensor:
     report.section("create")
     # @step make: 造张量
+    # Shape (2, 3): 2 rows x 3 cols. reshape() returns a *view* when memory allows -
+    # no data is copied, only the stride metadata changes.
     x = torch.arange(6, dtype=torch.float32).reshape(2, 3)
     report.show("arange.reshape(2, 3)", x)
     report.show("zeros(2, 2)", torch.zeros(2, 2))
@@ -28,6 +30,8 @@ def create(seed: int) -> torch.Tensor:
 def reshape(x: torch.Tensor) -> None:
     report.section("reshape")
     # @step view: 改形状
+    # view() needs contiguous memory; transpose() only swaps strides, so a transposed
+    # tensor must be .contiguous()'d before another view() (see lesson 04, merge step).
     report.show("x.view(3, 2)", x.view(3, 2))
     report.show("x.transpose(0, 1)", x.transpose(0, 1))
     report.show("x.unsqueeze(0)", x.unsqueeze(0))
@@ -55,6 +59,7 @@ def broadcast(x: torch.Tensor) -> None:
     # @step bias: 一维偏置
     bias = torch.tensor([10.0, 20.0, 30.0])
     # @step ops: 广播运算
+    # Broadcasting aligns shapes from the right: (2, 3) + (3,) -> (2, 3).
     report.show("x + bias", x + bias)
     report.show("x * 2", x * 2)
     # @step reduce: 归约
@@ -65,6 +70,7 @@ def broadcast(x: torch.Tensor) -> None:
 def matmul(x: torch.Tensor) -> None:
     report.section("matmul")
     # @step matmul: 矩阵乘
+    # (2, 3) @ (3, 2) -> (2, 2). The inner dims must agree.
     report.show("x @ x.T", x @ x.T)
     # @step softmax: softmax
     report.show("softmax(x, dim=-1)", torch.softmax(x, dim=-1))

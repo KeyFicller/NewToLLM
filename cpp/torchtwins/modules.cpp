@@ -18,12 +18,18 @@ torch::Tensor GELUImpl::forward(const torch::Tensor& x) {
 // @step params
 LayerNormImpl::LayerNormImpl(int64_t emb_dim, double eps)
     : eps_(eps),
+      // nn.Parameter = a tensor the module owns AND the optimizer should train.
+      // LibTorch has no attribute magic: register_parameter() names it explicitly.
       scale_(register_parameter("scale", torch::ones({emb_dim}))),
       shift_(register_parameter("shift", torch::zeros({emb_dim}))) {}
 
 torch::Tensor LayerNormImpl::forward(const torch::Tensor& x) {
   // @step stats
+  // Normalise over the embedding dim only: (batch, tokens, emb) -> (batch, tokens, 1).
+  // keepdim=true keeps the trailing 1 so the result broadcasts back against x.
   const auto mean = x.mean(/*dim=*/-1, /*keepdim=*/true);
+  // unbiased=false divides by N, not N-1 - this matches GPT-2's LayerNorm.
+  // Note the C++ overload takes (dim, unbiased, keepdim) - a different order.
   const auto var = x.var(/*dim=*/-1, /*unbiased=*/false, /*keepdim=*/true);
   // @step normalize
   return scale_ * (x - mean) / torch::sqrt(var + eps_) + shift_;
@@ -36,6 +42,8 @@ FeedForwardImpl::FeedForwardImpl(int64_t emb_dim)
   // push_back one by one: C++ leaves the evaluation order of constructor
   // arguments unspecified (GCC goes right-to-left), which would draw the
   // second Linear's random init before the first one's.
+  // Expand to 4x width, apply the non-linearity there, project back:
+  // (batch, tokens, emb) -> (batch, tokens, 4*emb) -> (batch, tokens, emb).
   layers_->push_back(torch::nn::Linear(emb_dim, 4 * emb_dim));
   layers_->push_back(GELU());
   layers_->push_back(torch::nn::Linear(4 * emb_dim, emb_dim));

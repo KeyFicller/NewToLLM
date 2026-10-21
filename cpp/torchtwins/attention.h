@@ -34,6 +34,7 @@ class MultiHeadAttentionImpl : public torch::nn::Module {
   torch::nn::Dropout dropout_;
   torch::Tensor mask_;
 };
+// See modules.h: generates the MultiHeadAttention holder around this Impl.
 TORCH_MODULE(MultiHeadAttention);
 // @endtwin
 

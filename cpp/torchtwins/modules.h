@@ -15,6 +15,10 @@ class GELUImpl : public torch::nn::Module {
  public:
   torch::Tensor forward(const torch::Tensor& x);
 };
+// TORCH_MODULE(X) generates class X: a thin holder around std::shared_ptr<XImpl>.
+// Copying X copies the pointer (shared ownership, like a Python reference),
+// `x->method()` reaches XImpl's members, and `x(input)` forwards to XImpl::forward.
+// That is why the class above is named ...Impl and call sites use `->`.
 TORCH_MODULE(GELU);
 
 // @twin LayerNorm

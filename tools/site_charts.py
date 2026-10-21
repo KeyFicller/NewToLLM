@@ -33,10 +33,14 @@ def line_chart(title: str, series: list[Series], xlabel: str, ylabel: str) -> st
     def py(y: float) -> float:
         return T + (1 - (y - y0) / (y1 - y0)) * (H - T - B)
 
-    parts = [f'<svg viewBox="0 0 {W} {H}" width="100%" role="img" aria-label="{html.escape(title)}">']
+    parts = [
+        f'<svg viewBox="0 0 {W} {H}" width="100%" role="img" aria-label="{html.escape(title)}">'
+    ]
     parts.append(f'<text class="title" x="{L}" y="16">{html.escape(title)}</text>')
     for t in _ticks(y0, y1):
-        parts.append(f'<line x1="{L}" x2="{W - R}" y1="{py(t):.1f}" y2="{py(t):.1f}" stroke="#30363d"/>')
+        parts.append(
+            f'<line x1="{L}" x2="{W - R}" y1="{py(t):.1f}" y2="{py(t):.1f}" stroke="#30363d"/>'
+        )
         parts.append(f'<text x="{L - 6}" y="{py(t) + 4:.1f}" text-anchor="end">{_fmt(t)}</text>')
     for t in _ticks(x0, x1):
         parts.append(f'<text x="{px(t):.1f}" y="{H - B + 16}" text-anchor="middle">{int(t)}</text>')
@@ -72,11 +76,15 @@ def bar_chart(groups: list[tuple[str, float, float]]) -> str:
     )
     for i, (label, p, c) in enumerate(groups):
         y = top + i * row_h
-        parts.append(f'<text class="title" x="{left - 10}" y="{y + 26}" text-anchor="end">{html.escape(label)}</text>')
+        parts.append(
+            f'<text class="title" x="{left - 10}" y="{y + 26}" text-anchor="end">{html.escape(label)}</text>'
+        )
         for k, (value, color) in enumerate(((p, "py"), (c, "cpp"))):
             w = value / vmax * span
             by = y + 4 + k * 22
-            parts.append(f'<rect x="{left}" y="{by}" width="{w:.1f}" height="18" rx="3" fill="{COLORS[color]}"/>')
+            parts.append(
+                f'<rect x="{left}" y="{by}" width="{w:.1f}" height="18" rx="3" fill="{COLORS[color]}"/>'
+            )
             parts.append(f'<text x="{left + w + 6:.1f}" y="{by + 14}">{value:.2f} ms</text>')
         parts.append(
             f'<text x="{left - 10}" y="{y + 44}" text-anchor="end">C++/Py = {c / p:.2f}×</text>'

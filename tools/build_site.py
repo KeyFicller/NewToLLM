@@ -29,8 +29,8 @@ from pygments.token import STANDARD_TYPES, _TokenType
 from check_twins import CPP_MARKER, PY_MARKER, twin_names
 from site_assets import CSS, MERMAID_ARCH, MERMAID_CONCEPTS, page
 from site_charts import bar_chart, line_chart
-from site_rules import RULES, ApiRule
 from site_notes import LESSON_TITLES, NOTES
+from site_rules import RULES, ApiRule
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SITE = REPO_ROOT / "docs" / "site"
@@ -162,7 +162,9 @@ def align_replace(py: list[Line], cpp: list[Line]) -> list[tuple[Line | None, Li
     for line in py:
         best, best_score = -1, 0.45
         for k in range(j, min(len(cpp), j + 12)):
-            score = difflib.SequenceMatcher(None, normalize(line.text), normalize(cpp[k].text)).ratio()
+            score = difflib.SequenceMatcher(
+                None, normalize(line.text), normalize(cpp[k].text)
+            ).ratio()
             if score > best_score:
                 best, best_score = k, score
         if best < 0:
@@ -181,7 +183,8 @@ def align_replace(py: list[Line], cpp: list[Line]) -> list[tuple[Line | None, Li
 def css_class(ttype: _TokenType) -> str:
     while ttype not in STANDARD_TYPES:
         ttype = ttype.parent
-    return STANDARD_TYPES[ttype]
+    name: str = STANDARD_TYPES[ttype]
+    return name
 
 
 def highlight(lines: list[Line], lang: str) -> dict[tuple[str, int], list[tuple[str, str]]]:
@@ -298,7 +301,7 @@ def render_block(module: str, name: str, py: list[Line], cpp: list[Line]) -> tup
         '<col class="lnc"><col class="codec"></colgroup><thead><tr>'
         f'<th colspan="2"><span class="badge py">PyTorch</span> {" + ".join(py_files)}</th>'
         f'<th colspan="2"><span class="badge cpp">LibTorch</span> {" + ".join(cpp_files)}</th>'
-        f'</tr></thead><tbody>{"".join(rows_html)}</tbody></table></section>'
+        f"</tr></thead><tbody>{''.join(rows_html)}</tbody></table></section>"
     )
     return table, BlockStats(len(rows), same, keys)
 
@@ -323,7 +326,7 @@ def render_transcript(module: str, transcripts: dict[str, Any]) -> str:
         f"<code>./build/bin/newtollm {module}</code>；文本逐字比较，数字容差 1e-4。"
         "标灰的行逐字相同，其余行只在浮点末位不同。</div>"
         '<table class="twin-table transcript"><thead><tr><th>PyTorch stdout</th>'
-        f'<th>LibTorch stdout</th></tr></thead><tbody>{"".join(rows)}</tbody></table></section>'
+        f"<th>LibTorch stdout</th></tr></thead><tbody>{''.join(rows)}</tbody></table></section>"
     )
 
 
@@ -331,13 +334,14 @@ def lesson_page(module: str, transcripts: dict[str, Any]) -> tuple[str, dict[str
     py_blocks = read_blocks(PY_DIR / f"{module}.py", PY_MARKER)
     cpp = cpp_blocks(module)
     parts: list[str] = []
-    totals = {"rows": 0, "same": 0, "blocks": len(py_blocks), "api": set()}
+    rows = same = 0
+    api: set[str] = set()
     for block in py_blocks:
         section, stats = render_block(module, block.name, block.lines, cpp.get(block.name, []))
         parts.append(section)
-        totals["rows"] += stats.rows
-        totals["same"] += stats.same
-        totals["api"] |= stats.api
+        rows += stats.rows
+        same += stats.same
+        api |= stats.api
     number, title = LESSON_TITLES[module]
     toc = "".join(f'<a href="#{b.name}">{b.name}</a>' for b in py_blocks)
     py_loc = sum(len(b.lines) for b in py_blocks)
@@ -347,12 +351,20 @@ def lesson_page(module: str, transcripts: dict[str, Any]) -> tuple[str, dict[str
         f'<p class="files"><code>py/newtollm/{module}.py</code> ⇄ '
         f"<code>cpp/newtollm/{module}.{{h,cpp}}</code></p>"
         f'<p class="stats">{len(py_blocks)} 个 twin 块 · Python {py_loc} 行 · C++ {cpp_loc} 行 · '
-        f"{len(totals['api'])} 类 API 差异（黄色高亮，悬停看解释）</p></div></header>"
+        f"{len(api)} 类 API 差异（黄色高亮，悬停看解释）</p></div></header>"
         f'<nav class="toc">{toc}{"<a href=#transcript>运行输出</a>" if module in RUNNABLE else ""}'
         "</nav>"
     )
     body = head + "".join(parts) + render_transcript(module, transcripts)
-    summary = {"module": module, "py_loc": py_loc, "cpp_loc": cpp_loc, **totals}
+    summary = {
+        "module": module,
+        "py_loc": py_loc,
+        "cpp_loc": cpp_loc,
+        "rows": rows,
+        "same": same,
+        "blocks": len(py_blocks),
+        "api": api,
+    }
     return page(f"{number} {title}", body, active=module, nav=nav_items()), summary
 
 
@@ -371,11 +383,11 @@ def load_json(name: str) -> dict[str, Any]:
 
 def index_page(summaries: list[dict[str, Any]]) -> str:
     rows = "".join(
-        f'<tr><td>{LESSON_TITLES[s["module"]][0]}</td>'
+        f"<tr><td>{LESSON_TITLES[s['module']][0]}</td>"
         f'<td><a href="{s["module"]}.html">{LESSON_TITLES[s["module"]][1]}</a></td>'
         f'<td class="r">{s["blocks"]}</td><td class="r">{s["py_loc"]}</td>'
         f'<td class="r">{s["cpp_loc"]}</td><td class="r">{s["cpp_loc"] / max(s["py_loc"], 1):.2f}×</td>'
-        f'<td>{" ".join(f"<code>{k}</code>" for k in sorted(s["api"]))}</td></tr>'
+        f"<td>{' '.join(f'<code>{k}</code>' for k in sorted(s['api']))}</td></tr>"
         for s in summaries
     )
     train = load_json("train_curves.json").get("result", {})
@@ -425,7 +437,7 @@ def results_page() -> str:
     parts = [
         "<h1>实测结果</h1>",
         f'<p class="meta">PyTorch {parity.get("pytorch", "?")} · LibTorch {parity.get("libtorch", "?")} · '
-        f'{parity.get("machine", "?")}。所有数字由 <code>tools/parity.py</code>、<code>tools/train_parity.py</code>、'
+        f"{parity.get('machine', '?')}。所有数字由 <code>tools/parity.py</code>、<code>tools/train_parity.py</code>、"
         "<code>tools/bench.py</code> 写入 <code>docs/results/*.json</code>，本页只负责画出来。</p>",
         "<h2>① 数值一致性（parity）</h2>",
         '<div class="note"><b>init</b>：同一个种子，C++ 抽出的随机权重与 Python 逐位相同；'
@@ -439,8 +451,8 @@ def results_page() -> str:
         parts += [
             "<h2>② 训练曲线：两条线几乎完全重合</h2>",
             f'<div class="note">preset <b>{res["preset"]}</b>，种子 {res["seed"]}。步数 Python '
-            f'<b>{res["python_steps"]}</b> / C++ <b>{res["cpp_steps"]}</b>；逐步训练 loss 最大误差 '
-            f'<b>{res["max_train_diff"]:.2e}</b>，验证 loss 最大误差 <b>{res["max_val_diff"]:.2e}</b>（门禁阈值 {curves["atol"]:g}）。'
+            f"<b>{res['python_steps']}</b> / C++ <b>{res['cpp_steps']}</b>；逐步训练 loss 最大误差 "
+            f"<b>{res['max_train_diff']:.2e}</b>，验证 loss 最大误差 <b>{res['max_val_diff']:.2e}</b>（门禁阈值 {curves['atol']:g}）。"
             "旧版因分词正则和 DataLoader 切分不同，同一配置下 Python 85 步、C++ 75 步。</div>",
             line_chart(
                 "训练 loss（每步）与验证 loss",
@@ -462,14 +474,14 @@ def results_page() -> str:
         ]
     if bench:
         groups = [
-            (f'{r["preset"]} · {metric.replace("_ms", "")}', r["python"][metric], r["cpp"][metric])
+            (f"{r['preset']} · {metric.replace('_ms', '')}", r["python"][metric], r["cpp"][metric])
             for r in bench["results"]
             for metric in ("forward_ms", "train_step_ms")
         ]
         parts += [
             "<h2>③ 性能（中位数，毫秒，越短越好）</h2>",
             f'<div class="note">{bench["machine"]}，{bench["threads"]} 线程，预热 {bench["warmup"]} 次后取 '
-            f'{bench["iters"]} 次的中位数；PyTorch {bench["pytorch"]} / LibTorch {bench["libtorch"]}。'
+            f"{bench['iters']} 次的中位数；PyTorch {bench['pytorch']} / LibTorch {bench['libtorch']}。"
             "同一 preset、同一种子、同一输入形状。两边版本不同、机器共享，这组数只说明“差距不大”，"
             "不说明谁更快；大部分时间花在同一套 ATen 内核里，C++ 主要省掉的是 Python 调度开销，小模型上更明显。</div>",
             bar_chart(groups),
@@ -487,7 +499,10 @@ def record_transcripts() -> None:
     for lesson in RUNNABLE:
         py = subprocess.run(
             [sys.executable, "-m", "newtollm", lesson],
-            cwd=REPO_ROOT, check=True, capture_output=True, text=True,
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
         ).stdout.splitlines()
         cpp = subprocess.run(
             [str(CPP_CLI), lesson], cwd=REPO_ROOT, check=True, capture_output=True, text=True
@@ -498,8 +513,9 @@ def record_transcripts() -> None:
             "cpp": cpp,
             "verdict": "IDENTICAL" if not mismatches else f"{len(mismatches)} MISMATCH",
         }
-    TRANSCRIPTS.write_text(json.dumps({"lessons": lessons}, indent=1, ensure_ascii=False) + "\n",
-                           encoding="utf-8")
+    TRANSCRIPTS.write_text(
+        json.dumps({"lessons": lessons}, indent=1, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
 
 # ----------------------------------------------------------------------------- main

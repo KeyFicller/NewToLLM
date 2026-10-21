@@ -1,49 +1,49 @@
-# NewToLLM C++ side: one library mirroring py/newtollm, plus the CLI.
+# TorchTwins C++ side: one library mirroring py/torchtwins, plus the CLI.
 find_package(Torch REQUIRED)
 
-set(NEWTOLLM_SOURCES
-    newtollm/report.cpp
-    newtollm/config.cpp
-    newtollm/tokenizer.cpp
-    newtollm/tensors.cpp
-    newtollm/autograd.cpp
-    newtollm/modules.cpp
-    newtollm/attention.cpp
-    newtollm/gpt.cpp
-    newtollm/data.cpp
-    newtollm/train.cpp
-    newtollm/finetune.cpp
+set(TORCHTWINS_SOURCES
+    torchtwins/report.cpp
+    torchtwins/config.cpp
+    torchtwins/tokenizer.cpp
+    torchtwins/tensors.cpp
+    torchtwins/autograd.cpp
+    torchtwins/modules.cpp
+    torchtwins/attention.cpp
+    torchtwins/gpt.cpp
+    torchtwins/data.cpp
+    torchtwins/train.cpp
+    torchtwins/finetune.cpp
 )
 
-add_library(newtollm_lib STATIC ${NEWTOLLM_SOURCES})
-# Headers are included as "newtollm/<name>.h", same as the Python import path.
-target_include_directories(newtollm_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(newtollm_lib SYSTEM PRIVATE
+add_library(torchtwins_lib STATIC ${TORCHTWINS_SOURCES})
+# Headers are included as "torchtwins/<name>.h", same as the Python import path.
+target_include_directories(torchtwins_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(torchtwins_lib SYSTEM PRIVATE
     ${meta_pytorch_tokenizers_SOURCE_DIR}/third-party/json/single_include)
-target_compile_definitions(newtollm_lib PUBLIC NEWTOLLM_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+target_compile_definitions(torchtwins_lib PUBLIC TORCHTWINS_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 # PUBLIC so executables inherit regex_lookahead's whole-archive link options: it registers
 # the PCRE2 fallback (needed for GPT-2's `(?!\S)`) from a static initializer.
-target_link_libraries(newtollm_lib PUBLIC ${TORCH_LIBRARIES} tokenizers::tokenizers)
-target_compile_features(newtollm_lib PUBLIC cxx_std_20)
-target_compile_options(newtollm_lib PRIVATE -Wall -Wextra -Wpedantic)
+target_link_libraries(torchtwins_lib PUBLIC ${TORCH_LIBRARIES} tokenizers::tokenizers)
+target_compile_features(torchtwins_lib PUBLIC cxx_std_20)
+target_compile_options(torchtwins_lib PRIVATE -Wall -Wextra -Wpedantic)
 
-add_executable(newtollm newtollm/main.cpp)
-target_link_libraries(newtollm PRIVATE newtollm_lib)
-set_target_properties(newtollm PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+add_executable(torchtwins torchtwins/main.cpp)
+target_link_libraries(torchtwins PRIVATE torchtwins_lib)
+set_target_properties(torchtwins PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 foreach(lesson tensors autograd modules attention gpt data train finetune)
-  add_test(NAME ${lesson} COMMAND newtollm ${lesson})
+  add_test(NAME ${lesson} COMMAND torchtwins ${lesson})
 endforeach()
-add_test(NAME unknown_lesson COMMAND newtollm no_such_lesson)
+add_test(NAME unknown_lesson COMMAND torchtwins no_such_lesson)
 set_tests_properties(unknown_lesson PROPERTIES WILL_FAIL TRUE)
 
 add_executable(parity tools/parity.cpp)
-target_link_libraries(parity PRIVATE newtollm_lib)
+target_link_libraries(parity PRIVATE torchtwins_lib)
 set_target_properties(parity PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_test(NAME parity_usage COMMAND parity)
 set_tests_properties(parity_usage PROPERTIES WILL_FAIL TRUE)
 
 add_executable(bench tools/bench.cpp)
-target_link_libraries(bench PRIVATE newtollm_lib)
+target_link_libraries(bench PRIVATE torchtwins_lib)
 set_target_properties(bench PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_test(NAME bench_smoke COMMAND bench tiny 1 1 2)

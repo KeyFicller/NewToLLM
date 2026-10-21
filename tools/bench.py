@@ -21,9 +21,9 @@ from typing import Any
 
 import torch
 
-from newtollm.config import REPO_ROOT, load_preset
-from newtollm.gpt import GPTModel
-from newtollm.train import loss_batch
+from torchtwins.config import REPO_ROOT, load_preset
+from torchtwins.gpt import GPTModel
+from torchtwins.train import loss_batch
 
 BENCH_EXE = REPO_ROOT / "build" / "bin" / "bench"
 RESULTS = REPO_ROOT / "docs" / "results" / "benchmark.json"

@@ -1,4 +1,4 @@
-# NewToLLM 重新设计方案（v2）
+# TorchTwins 重新设计方案（v2）
 
 > owner 的新要求：代码质量要非常高，对比要非常形象；可以不沿用原有结构。
 > 目标：把仓库做成一个示范级的 **PyTorch ↔ LibTorch 并排学习项目**。
@@ -6,7 +6,7 @@
 ## 1. 设计原则
 
 1. **双胞胎文件（twins）**：Python 与 C++ 一一对应，**文件名、类名、函数名完全相同**。
-   例如 `py/newtollm/attention.py` 对应 `cpp/newtollm/attention.{h,cpp}`，
+   例如 `py/torchtwins/attention.py` 对应 `cpp/torchtwins/attention.{h,cpp}`，
    `class MultiHeadAttention` 对应 `class MultiHeadAttentionImpl` 加上 `TORCH_MODULE(MultiHeadAttention)`。
 2. **`@twin` 锚点**：每个可以对照的代码块前面都加一行 `# @twin <name>` 或 `// @twin <name>`。
    脚本检查两边的锚点集合与顺序是否一致，不一致就让 CI 失败，这样两边不会悄悄走样。
@@ -22,13 +22,13 @@
 ```
 configs/presets.json            # 共享配置
 assets/                         # the-verdict.txt、SMSSpamCollection.tsv、gpt2.tiktoken
-py/newtollm/                    # Python 包（PyTorch）
+py/torchtwins/                    # Python 包（PyTorch）
   report.py   config.py  tokenizer.py
   tensors.py  autograd.py  modules.py  attention.py  gpt.py  data.py  train.py  finetune.py
-  __main__.py                   # python -m newtollm <lesson>
-cpp/newtollm/                   # C++ 库（LibTorch），与上面逐文件对应：*.h + *.cpp
+  __main__.py                   # python -m torchtwins <lesson>
+cpp/torchtwins/                   # C++ 库（LibTorch），与上面逐文件对应：*.h + *.cpp
   report  config  tokenizer  tensors  autograd  modules  attention  gpt  data  train  finetune
-  main.cpp                      # ./build/newtollm <lesson>
+  main.cpp                      # ./build/torchtwins <lesson>
 cpp/tools/                      # parity_check.cpp、benchmark.cpp
 tools/                          # parity_check.py、benchmark.py、compare_outputs.py、check_twins.py、build_site.py
 tests/                          # pytest（同时驱动 C++ 可执行文件）

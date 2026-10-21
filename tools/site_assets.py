@@ -71,9 +71,9 @@ def page(title: str, body: str, active: str, nav: list[tuple[str, str, str]]) ->
     return (
         '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        f"<title>{html.escape(title)} · NewToLLM：PyTorch ⇄ LibTorch</title>"
+        f"<title>{html.escape(title)} · TorchTwins：PyTorch ⇄ LibTorch</title>"
         '<link rel="stylesheet" href="style.css"></head><body>'
-        f'<aside class="side"><div class="logo">NewToLLM<small>PyTorch ⇄ LibTorch</small></div>'
+        f'<aside class="side"><div class="logo">TorchTwins<small>PyTorch ⇄ LibTorch</small></div>'
         f"{links}</aside><main>{body}"
         "<footer>由 <code>tools/build_site.py</code> 从源码与 <code>docs/results/*.json</code> 生成，"
         "请勿手改。</footer></main>"

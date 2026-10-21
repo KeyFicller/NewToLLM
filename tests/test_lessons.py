@@ -12,7 +12,7 @@ from check_twins import check
 from compare_outputs import compare_lines
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CPP_CLI = REPO_ROOT / "build" / "bin" / "newtollm"
+CPP_CLI = REPO_ROOT / "build" / "bin" / "torchtwins"
 LESSONS = ["tensors", "autograd", "modules", "attention", "gpt", "data", "train", "finetune"]
 
 needs_cpp = pytest.mark.skipif(not CPP_CLI.exists(), reason="C++ side not built")
@@ -20,7 +20,7 @@ needs_cpp = pytest.mark.skipif(not CPP_CLI.exists(), reason="C++ side not built"
 
 def run_python(*args: str) -> str:
     return subprocess.run(
-        [sys.executable, "-m", "newtollm", *args],
+        [sys.executable, "-m", "torchtwins", *args],
         cwd=REPO_ROOT,
         check=True,
         capture_output=True,

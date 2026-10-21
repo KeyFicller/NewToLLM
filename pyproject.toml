@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "newtollm"
+name = "torchtwins"
 version = "2.0.0"
 description = "A GPT built twice - PyTorch and LibTorch side by side"
 requires-python = ">=3.10"
@@ -38,7 +38,7 @@ ignore = ["PLR0913", "PLR0917", "PLR2004", "PLR0915"]
 [tool.mypy]
 strict = true
 python_version = "3.10"
-files = ["py/newtollm", "tools/compare_outputs.py", "tools/check_twins.py", "tools/parity.py", "tools/train_parity.py", "tools/bench.py", "tools/build_site.py", "tools/site_assets.py", "tools/site_charts.py", "tools/site_notes.py", "tools/site_rules.py"]
+files = ["py/torchtwins", "tools/compare_outputs.py", "tools/check_twins.py", "tools/parity.py", "tools/train_parity.py", "tools/bench.py", "tools/build_site.py", "tools/site_assets.py", "tools/site_charts.py", "tools/site_notes.py", "tools/site_rules.py"]
 ignore_missing_imports = true
 # torch ships a few unannotated methods (e.g. Tensor.backward).
 untyped_calls_exclude = ["torch"]

@@ -1,4 +1,4 @@
-# Applies to cpp/ (NewToLLM v2). Torch / third-party headers are excluded by HeaderFilterRegex.
+# Applies to cpp/ (TorchTwins v2). Torch / third-party headers are excluded by HeaderFilterRegex.
 Checks: >
   -*,
   bugprone-*,
@@ -18,7 +18,7 @@ Checks: >
   readability-identifier-naming,
   readability-redundant-*,
 WarningsAsErrors: '*'
-HeaderFilterRegex: '.*/cpp/newtollm/.*'
+HeaderFilterRegex: '.*/cpp/torchtwins/.*'
 CheckOptions:
   - { key: readability-identifier-naming.ClassCase, value: CamelCase }
   - { key: readability-identifier-naming.FunctionCase, value: lower_case }

@@ -21,7 +21,7 @@ jobs:
       - name: Install Python deps (CPU torch)
         run: |
           pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install tiktoken pytest
+          pip install -e ".[dev]"
 
       - name: Cache LibTorch
         id: libtorch-cache
@@ -40,13 +40,23 @@ jobs:
 
       - name: Build C++ side
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
           cmake --build build -j"$(nproc)"
+
+      - name: Install C++ linters (LLVM 19)
+        run: sudo apt-get update -q && sudo apt-get install -y -q clang-format-19 clang-tidy-19
+
+      - name: Lint (ruff, mypy --strict, twins, clang-format, clang-tidy)
+        env:
+          CLANG_FORMAT: clang-format-19
+          CLANG_TIDY: clang-tidy-19
+          RUN_CLANG_TIDY: run-clang-tidy-19
+        run: tools/lint.sh build
 
       - name: CTest (C++)
         run: ctest --test-dir build --output-on-failure
 
-      - name: pytest (Python + parity)
+      - name: pytest (lesson transcripts, tokenizer, twins, legacy parity)
         run: python -m pytest -v tests
 
       - name: Python smoke tasks

@@ -1,4 +1,4 @@
-# Applies to cpp/ (TorchTwins v2). Torch / third-party headers are excluded by HeaderFilterRegex.
+# Applies to cpp/. Torch / third-party headers are excluded by HeaderFilterRegex.
 Checks: >
   -*,
   bugprone-*,

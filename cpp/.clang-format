@@ -1,4 +1,4 @@
-# TorchTwins v2 C++ style (cpp/ only; legacy cpp_impl/ keeps the root .clang-format).
+# TorchTwins C++ style.
 BasedOnStyle: Google
 ColumnLimit: 100
 IncludeBlocks: Preserve

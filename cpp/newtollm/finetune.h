@@ -26,11 +26,13 @@ using Example = std::pair<int64_t, std::string>;
 
 // @twin FinetuneHistory
 struct FinetuneHistory {
+  // @step fields
   std::vector<double> train_loss;
   std::vector<double> train_accuracy;
   std::vector<double> val_accuracy;
 };
 
+// @endtwin
 [[nodiscard]] std::vector<Example> load_sms(const std::filesystem::path& path = default_sms_path());
 [[nodiscard]] std::vector<Example> balanced(const std::vector<Example>& rows, int64_t per_class);
 [[nodiscard]] Windows encode_examples(const std::vector<Example>& examples,

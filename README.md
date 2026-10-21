@@ -6,6 +6,7 @@
 **👉 并排对照站点：<https://keyficller.github.io/NewToLLM/>**（本地打开 `docs/site/index.html` 也一样）
 
 站点由 `tools/build_site.py` 从源码自动生成：左边 Python、右边 C++，按 `@twin` 代码块对齐，
+块内再按 `@step` 语义锚点切成一步一行（`# @step qk: 投影 Q/K 并打分` ↔ `// @step qk`），每行附中文说明，
 API 差异高亮并附解释；结果页的表格和图表全部读自 `docs/results/*.json`。
 
 ## 课程
@@ -49,7 +50,7 @@ cmake --build build -j
 ### 跑一遍全部门禁
 
 ```bash
-tools/lint.sh build                    # ruff、mypy --strict、@twin 检查、clang-format、clang-tidy
+tools/lint.sh build                    # ruff、mypy --strict、@twin/@step 检查、clang-format、clang-tidy
 ctest --test-dir build                 # C++ 冒烟测试
 python -m pytest tests                 # 两边课程输出 diff、数值 parity、训练曲线 parity
 python tools/parity.py                 # 权重初始化 + 前向 logits 对比

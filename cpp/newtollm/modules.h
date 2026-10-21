@@ -40,6 +40,7 @@ class FeedForwardImpl : public torch::nn::Module {
   torch::nn::Sequential layers_;
 };
 TORCH_MODULE(FeedForward);
+// @endtwin
 
 [[nodiscard]] int64_t count_parameters(const torch::nn::Module& module);
 void run_modules(const Preset& preset);

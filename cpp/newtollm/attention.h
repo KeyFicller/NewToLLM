@@ -35,6 +35,7 @@ class MultiHeadAttentionImpl : public torch::nn::Module {
   torch::Tensor mask_;
 };
 TORCH_MODULE(MultiHeadAttention);
+// @endtwin
 
 void run_attention(const Preset& preset);
 

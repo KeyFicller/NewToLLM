@@ -11,7 +11,6 @@ measured result files in docs/results/*.json - no number is typed in by hand.
 from __future__ import annotations
 
 import argparse
-import difflib
 import filecmp
 import html
 import json
@@ -26,10 +25,10 @@ from typing import Any
 from pygments.lexers import CppLexer, PythonLexer
 from pygments.token import STANDARD_TYPES, _TokenType
 
-from check_twins import CPP_MARKER, PY_MARKER, twin_names
+from check_twins import CPP_MARKER, CPP_STEP, END_MARKER, PY_MARKER, PY_STEP, twin_names
 from site_assets import CSS, MERMAID_ARCH, MERMAID_CONCEPTS, page
 from site_charts import bar_chart, line_chart
-from site_notes import LESSON_TITLES, NOTES
+from site_notes import LESSON_TITLES, NOTES, STEP_NOTES
 from site_rules import RULES, ApiRule
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -65,10 +64,10 @@ def read_blocks(path: Path, marker: re.Pattern[str]) -> list[Block]:
     lines: list[Line] = []
     for number, text in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
         match = marker.match(text)
-        if match:
+        if match or END_MARKER.match(text):
             if name is not None:
                 blocks.append(Block(name, lines))
-            name, lines = match.group(1), []
+            name, lines = (match.group(1) if match else None), []
         elif name is not None:
             lines.append(Line(path.name, number, text))
     if name is not None:
@@ -77,9 +76,12 @@ def read_blocks(path: Path, marker: re.Pattern[str]) -> list[Block]:
 
 
 def trim(lines: list[Line]) -> list[Line]:
-    while lines and not lines[-1].text.strip():
-        lines = lines[:-1]
-    return lines
+    start, end = 0, len(lines)
+    while start < end and not lines[start].text.strip():
+        start += 1
+    while end > start and not lines[end - 1].text.strip():
+        end -= 1
+    return lines[start:end]
 
 
 def cpp_blocks(name: str) -> dict[str, list[Line]]:
@@ -92,89 +94,50 @@ def cpp_blocks(name: str) -> dict[str, list[Line]]:
     return merged
 
 
-# ----------------------------------------------------------------------------- alignment
+# ----------------------------------------------------------------------------- steps
 
-_NORMALIZE = [
-    (re.compile(r"\bself\.|this->"), ""),
-    (re.compile(r"(\w)_\b"), r"\1"),  # C++ member suffix
-    (re.compile(r"::|->"), "."),
-    (re.compile(r"\b(const|auto|override|explicit|inline|static|constexpr|void)\b"), ""),
-    (re.compile(r"[;{}()\[\],:&*<>\"']"), " "),
-]
+SIGNATURE = "_sig"
 
 
-def normalize(text: str) -> str:
-    text = text.strip()
-    for pattern, repl in _NORMALIZE:
-        text = pattern.sub(repl, text)
-    return " ".join(text.lower().split())
+@dataclass(frozen=True)
+class Step:
+    id: str
+    note: str
+    lines: list[Line]
 
 
-def align(py: list[Line], cpp: list[Line]) -> list[tuple[Line | None, Line | None]]:
-    """Pair lines so that corresponding statements sit on the same row."""
-    a = [normalize(line.text) for line in py]
-    b = [normalize(line.text) for line in cpp]
-    rows: list[tuple[Line | None, Line | None]] = []
-    matcher = difflib.SequenceMatcher(None, a, b, autojunk=False)
-    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag == "equal":
-            rows.extend(zip(py[i1:i2], cpp[j1:j2], strict=True))
-        elif tag == "delete":
-            rows.extend((line, None) for line in py[i1:i2])
-        elif tag == "insert":
-            rows.extend((None, line) for line in cpp[j1:j2])
-        else:
-            rows.extend(align_replace(py[i1:i2], cpp[j1:j2]))
-    return rows
+def split_steps(lines: list[Line], marker: re.Pattern[str]) -> list[Step]:
+    """Cut a twin block at its ``@step`` anchors; code before the first anchor is the signature.
 
-
-def align_twin(py: list[Line], cpp: list[Line]) -> list[tuple[Line | None, Line | None]]:
-    """Header declarations first, then the implementation aligned against Python.
-
-    A class/struct declaration pairs with the Python ``class`` line; a function
-    declaration stands alone so the Python ``def`` can pair with the C++ definition.
+    Rows are aligned by meaning (the anchor ids), never by text similarity: Python and
+    C++ syntax differ too much for a line diff to pair anything but signatures.
     """
-    header = [line for line in cpp if line.file.endswith(".h")]
-    source = [line for line in cpp if not line.file.endswith(".h")]
-    rows: list[tuple[Line | None, Line | None]] = []
-    if header and py and re.match(r"\s*(class|struct)\b", header[0].text):
-        # Stop after the class (and its TORCH_MODULE): later free-function
-        # declarations belong to other blocks' definitions.
-        end = next(
-            (i for i, line in enumerate(header) if re.match(r"(TORCH_MODULE\(|};)", line.text)),
-            len(header) - 1,
-        )
-        if end + 1 < len(header) and header[end + 1].text.startswith("TORCH_MODULE("):
-            end += 1
-        header = header[: end + 1]
-        rows.append((py[0], header[0]))
-        rows.extend((None, line) for line in header[1:])
-        py = py[1:]
-    else:
-        rows.extend((None, line) for line in header)
-    return rows + align(py, source)
+    out: list[Step] = []
+    sid, note = SIGNATURE, ""
+    current: list[Line] = []
+    for line in lines:
+        match = marker.match(line.text)
+        if match:
+            out.append(Step(sid, note, trim(current)))
+            sid, note, current = match.group(1), match.group(2) or "", []
+        else:
+            current.append(line)
+    out.append(Step(sid, note, trim(current)))
+    return [s for s in out if s.id != SIGNATURE or s.lines] if len(out) > 1 else out
 
 
-def align_replace(py: list[Line], cpp: list[Line]) -> list[tuple[Line | None, Line | None]]:
-    """Inside a changed region, greedily pair lines by similarity, keeping order."""
-    rows: list[tuple[Line | None, Line | None]] = []
-    j = 0
-    for line in py:
-        best, best_score = -1, 0.45
-        for k in range(j, min(len(cpp), j + 12)):
-            score = difflib.SequenceMatcher(
-                None, normalize(line.text), normalize(cpp[k].text)
-            ).ratio()
-            if score > best_score:
-                best, best_score = k, score
-        if best < 0:
-            rows.append((line, None))
-            continue
-        rows.extend((None, extra) for extra in cpp[j:best])
-        rows.append((line, cpp[best]))
-        j = best + 1
-    rows.extend((None, extra) for extra in cpp[j:])
-    return rows
+def pair_steps(where: str, py: list[Step], cpp: list[Step]) -> list[tuple[Step, Step]]:
+    """Pair steps by id. ``tools/check_twins.py`` guarantees equal ids in equal order."""
+    py_ids = [s.id for s in py if s.id != SIGNATURE]
+    cpp_ids = [s.id for s in cpp if s.id != SIGNATURE]
+    if py_ids != cpp_ids:
+        msg = f"{where}: step ids differ py={py_ids} cpp={cpp_ids} (run tools/check_twins.py)"
+        raise SystemExit(msg)
+    by_id_py = {s.id: s for s in py}
+    by_id_cpp = {s.id: s for s in cpp}
+    empty = Step(SIGNATURE, "", [])
+    ids = ([SIGNATURE] if SIGNATURE in by_id_py or SIGNATURE in by_id_cpp else []) + py_ids
+    return [(by_id_py.get(i, empty), by_id_cpp.get(i, empty)) for i in ids]
 
 
 # ----------------------------------------------------------------------------- highlighting
@@ -254,37 +217,79 @@ def render_line(segments: list[tuple[str, str]], marks: list[tuple[int, int, Api
 
 @dataclass(frozen=True)
 class BlockStats:
-    rows: int
-    same: int
+    steps: int
     api: set[str]
 
 
+def rich_note(text: str) -> str:
+    """Escape a plain-text note and turn `code` spans into <code>."""
+    return re.sub(r"`([^`]+)`", r"<code>\1</code>", html.escape(text, quote=False))
+
+
+def render_side(
+    lines: list[Line], lang: str, hl: dict[tuple[str, int], list[tuple[str, str]]], keys: set[str]
+) -> str:
+    if not lines:
+        return f'<td class="tside {lang} empty"></td>'
+    out: list[str] = []
+    previous: str | None = None
+    for line in lines:
+        if previous is not None and line.file != previous:
+            out.append(f'<div class="file-sep">{html.escape(line.file)}</div>')
+        previous = line.file
+        marks = api_marks(line.text, lang)
+        keys.update(m[2].key for m in marks)
+        code = render_line(hl.get((line.file, line.number), [("", line.text)]), marks)
+        api_cls = " has-api" if marks else ""
+        out.append(
+            f'<div class="cl{api_cls}"><span class="ln" title="{line.file}:{line.number}">'
+            f'{line.number}</span><span class="code">{code}</span></div>'
+        )
+    return f'<td class="tside {lang}"><div class="seg">{"".join(out)}</div></td>'
+
+
+def step_head(module: str, name: str, index: int, py: Step, cpp: Step) -> str:
+    if py.id == SIGNATURE:
+        files = {line.file for line in cpp.lines}
+        detail = (
+            "C++ 在头文件 <code>.h</code> 里声明，在 <code>.cpp</code> 里定义；Python 一处写完。"
+            if any(f.endswith(".h") for f in files)
+            else ""
+        )
+        return (
+            f'<tr class="step-head sig"><th colspan="2"><span class="step-no">0</span>'
+            f'<span class="step-title">签名 / 声明</span><span class="step-note">{detail}</span>'
+            "</th></tr>"
+        )
+    detail = STEP_NOTES.get(f"{module}.{name}.{py.id}", "")
+    anchor = f"{name}-{py.id}"
+    return (
+        f'<tr class="step-head" id="{anchor}"><th colspan="2"><span class="step-no">{index}</span>'
+        f'<code class="step-id">@step {py.id}</code><span class="step-title">{rich_note(py.note)}</span>'
+        f'<a class="anchor" href="#{anchor}">#</a>'
+        f'<span class="step-note">{rich_note(detail)}</span></th></tr>'
+    )
+
+
 def render_block(module: str, name: str, py: list[Line], cpp: list[Line]) -> tuple[str, BlockStats]:
-    hl_py, hl_cpp = highlight(py, "py"), highlight(cpp, "cpp")
-    rows_html: list[str] = []
+    py_steps = split_steps(py, PY_STEP)
+    cpp_steps = split_steps(cpp, CPP_STEP)
+    code_py = [line for s in py_steps for line in s.lines]
+    code_cpp = [line for s in cpp_steps for line in s.lines]
+    hl_py, hl_cpp = highlight(code_py, "py"), highlight(code_cpp, "cpp")
     keys: set[str] = set()
-    same = 0
-    rows = align_twin(py, cpp)
-    for left, right in rows:
-        cells: list[str] = []
-        row_cls: list[str] = []
-        if left and right and normalize(left.text) == normalize(right.text) and left.text.strip():
-            row_cls.append("same")
-            same += 1
-        for line, lang, hl in ((left, "py", hl_py), (right, "cpp", hl_cpp)):
-            if line is None:
-                cells.append('<td class="ln"></td><td class="code gap"></td>')
-                continue
-            marks = api_marks(line.text, lang)
-            keys.update(m[2].key for m in marks)
-            label = f"{line.file}:{line.number}"
-            code = render_line(hl.get((line.file, line.number), [("", line.text)]), marks)
-            api_cls = " has-api" if marks else ""
-            cells.append(
-                f'<td class="ln" title="{label}">{line.number}</td>'
-                f'<td class="code {lang}{api_cls}">{code}</td>'
-            )
-        rows_html.append(f'<tr class="{" ".join(row_cls)}">{"".join(cells)}</tr>')
+    rows_html: list[str] = []
+    pairs = pair_steps(f"{module}.{name}", py_steps, cpp_steps)
+    number = 0
+    for left, right in pairs:
+        if left.id != SIGNATURE:
+            number += 1
+        rows_html.append(step_head(module, name, number, left, right))
+        rows_html.append(
+            '<tr class="step-body">'
+            f"{render_side(left.lines, 'py', hl_py, keys)}{render_side(right.lines, 'cpp', hl_cpp, keys)}"
+            "</tr>"
+        )
     note = NOTES.get(f"{module}.{name}")
     if note is None and keys:
         tips = sorted({r.key: r for r in RULES if r.key in keys}.values(), key=lambda r: r.key)
@@ -292,18 +297,19 @@ def render_block(module: str, name: str, py: list[Line], cpp: list[Line]) -> tup
             f"<code>{html.escape(r.key)}</code>" for r in tips
         )
     note_html = f'<div class="note">{note}</div>' if note else ""
-    py_files = sorted({line.file for line in py})
-    cpp_files = sorted({line.file for line in cpp})
+    py_files = sorted({line.file for line in code_py})
+    cpp_files = sorted({line.file for line in code_cpp}, key=lambda f: not f.endswith(".h"))
     table = (
         f'<section class="block" id="{name}"><h3><span class="twin">@twin</span> {name}'
+        f'<span class="nsteps">{number} 步</span>'
         f'<a class="anchor" href="#{name}">#</a></h3>{note_html}'
-        '<table class="twin-table"><colgroup><col class="lnc"><col class="codec">'
-        '<col class="lnc"><col class="codec"></colgroup><thead><tr>'
-        f'<th colspan="2"><span class="badge py">PyTorch</span> {" + ".join(py_files)}</th>'
-        f'<th colspan="2"><span class="badge cpp">LibTorch</span> {" + ".join(cpp_files)}</th>'
+        '<table class="twin-table steps"><colgroup><col class="half"><col class="half"></colgroup>'
+        "<thead><tr>"
+        f'<th><span class="badge py">PyTorch</span> {" + ".join(py_files)}</th>'
+        f'<th><span class="badge cpp">LibTorch</span> {" + ".join(cpp_files)}</th>'
         f"</tr></thead><tbody>{''.join(rows_html)}</tbody></table></section>"
     )
-    return table, BlockStats(len(rows), same, keys)
+    return table, BlockStats(number, keys)
 
 
 def render_transcript(module: str, transcripts: dict[str, Any]) -> str:
@@ -334,23 +340,22 @@ def lesson_page(module: str, transcripts: dict[str, Any]) -> tuple[str, dict[str
     py_blocks = read_blocks(PY_DIR / f"{module}.py", PY_MARKER)
     cpp = cpp_blocks(module)
     parts: list[str] = []
-    rows = same = 0
+    steps = 0
     api: set[str] = set()
     for block in py_blocks:
         section, stats = render_block(module, block.name, block.lines, cpp.get(block.name, []))
         parts.append(section)
-        rows += stats.rows
-        same += stats.same
+        steps += stats.steps
         api |= stats.api
     number, title = LESSON_TITLES[module]
     toc = "".join(f'<a href="#{b.name}">{b.name}</a>' for b in py_blocks)
-    py_loc = sum(len(b.lines) for b in py_blocks)
-    cpp_loc = sum(len(v) for v in cpp.values())
+    py_loc = sum(1 for b in py_blocks for line in b.lines if not PY_STEP.match(line.text))
+    cpp_loc = sum(1 for v in cpp.values() for line in v if not CPP_STEP.match(line.text))
     head = (
         f'<header class="lesson-head"><div class="num">{number}</div><div><h1>{title}</h1>'
         f'<p class="files"><code>py/newtollm/{module}.py</code> ⇄ '
         f"<code>cpp/newtollm/{module}.{{h,cpp}}</code></p>"
-        f'<p class="stats">{len(py_blocks)} 个 twin 块 · Python {py_loc} 行 · C++ {cpp_loc} 行 · '
+        f'<p class="stats">{len(py_blocks)} 个 twin 块 · {steps} 个语义步骤 · Python {py_loc} 行 · C++ {cpp_loc} 行 · '
         f"{len(api)} 类 API 差异（黄色高亮，悬停看解释）</p></div></header>"
         f'<nav class="toc">{toc}{"<a href=#transcript>运行输出</a>" if module in RUNNABLE else ""}'
         "</nav>"
@@ -360,8 +365,7 @@ def lesson_page(module: str, transcripts: dict[str, Any]) -> tuple[str, dict[str
         "module": module,
         "py_loc": py_loc,
         "cpp_loc": cpp_loc,
-        "rows": rows,
-        "same": same,
+        "steps": steps,
         "blocks": len(py_blocks),
         "api": api,
     }
@@ -385,7 +389,7 @@ def index_page(summaries: list[dict[str, Any]]) -> str:
     rows = "".join(
         f"<tr><td>{LESSON_TITLES[s['module']][0]}</td>"
         f'<td><a href="{s["module"]}.html">{LESSON_TITLES[s["module"]][1]}</a></td>'
-        f'<td class="r">{s["blocks"]}</td><td class="r">{s["py_loc"]}</td>'
+        f'<td class="r">{s["blocks"]}</td><td class="r">{s["steps"]}</td><td class="r">{s["py_loc"]}</td>'
         f'<td class="r">{s["cpp_loc"]}</td><td class="r">{s["cpp_loc"] / max(s["py_loc"], 1):.2f}×</td>'
         f"<td>{' '.join(f'<code>{k}</code>' for k in sorted(s['api']))}</td></tr>"
         for s in summaries
@@ -396,7 +400,8 @@ def index_page(summaries: list[dict[str, Any]]) -> str:
     cards = (
         '<div class="cards">'
         f'<div class="card"><div class="big">{len(summaries)}</div>对双胞胎文件</div>'
-        f'<div class="card"><div class="big">{sum(s["blocks"] for s in summaries)}</div>个逐块对齐的 @twin 块</div>'
+        f'<div class="card"><div class="big">{sum(s["blocks"] for s in summaries)}</div>个 @twin 块</div>'
+        f'<div class="card"><div class="big">{sum(s["steps"] for s in summaries)}</div>个按语义对齐的 @step 步骤</div>'
         f'<div class="card"><div class="big">{train.get("python_steps", "?")} = {train.get("cpp_steps", "?")}</div>'
         "训练步数 Python = C++<br><small>（旧版 85 ≠ 75）</small></div>"
         f'<div class="card"><div class="big">{max(train.get("max_train_diff", 0.0), 0.0):.1e}</div>逐步训练 loss 最大误差</div>'
@@ -409,16 +414,18 @@ def index_page(summaries: list[dict[str, Any]]) -> str:
         "打印格式一一对应；同一个随机种子在两边抽出逐位相同的权重，训练出几乎重合的 loss 曲线。"
         "本站每一行代码都直接取自仓库源码，每一个数字都来自工具实测的 JSON。</p></header>"
         f"{cards}"
-        '<h2>课程</h2><table class="lessons"><thead><tr><th>#</th><th>课程</th><th>块</th>'
+        '<h2>课程</h2><table class="lessons"><thead><tr><th>#</th><th>课程</th><th>块</th><th>步骤</th>'
         "<th>Python 行</th><th>C++ 行</th><th>C++/Py</th><th>涉及的 API 差异</th></tr></thead>"
         f"<tbody>{rows}</tbody></table>"
         '<h2>模型结构</h2><div class="mermaid-wrap"><pre class="mermaid">'
         f"{MERMAID_ARCH}</pre></div>"
         '<h2>概念映射：PyTorch ⇄ LibTorch</h2><div class="mermaid-wrap"><pre class="mermaid">'
         f"{MERMAID_CONCEPTS}</pre></div>"
-        '<h2>怎么读</h2><ul class="howto"><li>每课一个页面，左右两栏按 <code>@twin</code> 块对齐，块内按语义逐行对齐；'
-        '<span class="legend same">灰底</span> = 两边规范化后完全相同，'
-        '<mark class="api">黄色</mark> = API 差异（悬停看解释），斜线格 = 这一侧没有对应行。</li>'
+        '<h2>怎么读</h2><ul class="howto"><li>每课一个页面，左右两栏按 <code>@twin</code> 块对齐；块内按 <code>@step</code> '
+        "语义锚点切成若干步，<b>一步一行</b>：同一行左边是 Python、右边是 C++，顶部对齐，短的一侧留空（斜线格）。"
+        "不做逐行 diff——两种语言语法差太多，按文本相似度只能对上函数签名。</li>"
+        "<li>每一步上方是这一步做什么，以及两边写法为什么不同；"
+        '<mark class="api">黄色</mark> = API 差异（悬停看解释）。</li>'
         "<li>页面末尾是两边程序的真实输出，逐行对照。</li>"
         '<li><a href="results.html">实测结果</a>：parity 误差、训练曲线叠加图、benchmark。</li></ul>'
     )

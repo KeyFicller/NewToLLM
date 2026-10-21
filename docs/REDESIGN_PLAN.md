@@ -57,7 +57,7 @@ docs/results/                   # 实测结果：parity.json、benchmark.json、
 ## 4. 形象的对比站点（全部由脚本从源码生成）
 
 `tools/build_site.py` 生成 `docs/site/`：
-- 每课一个页面：左边 Python、右边 C++，按 `@twin` 块对齐；块内用 difflib 按规范化后的 token 对齐行；
+- 每课一个页面：左边 Python、右边 C++，按 `@twin` 块对齐；块内按 `@step` 语义锚点分行（一步一行、两侧顶部对齐，不做逐行 diff），`tools/check_twins.py` 强制两边步骤 id 与顺序一致；
   API 差异（`register_module`、`TORCH_MODULE`、`Slice`、`->`、`{...}` 形状等）高亮显示，悬停可以看到解释；每块配一段"差在哪、为什么"。
 - 首页提供 mermaid 图：一张是 GPT 模型结构，一张是 PyTorch ↔ LibTorch 概念映射。
 - 结果页：parity 误差表、训练 loss 曲线（两边叠加画）、benchmark 柱状图（SVG），数据全部读自 `docs/results/*.json`。

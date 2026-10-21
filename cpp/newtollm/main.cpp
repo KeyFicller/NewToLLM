@@ -5,6 +5,7 @@
 #include "newtollm/autograd.h"
 #include "newtollm/config.h"
 #include "newtollm/data.h"
+#include "newtollm/finetune.h"
 #include "newtollm/gpt.h"
 #include "newtollm/modules.h"
 #include "newtollm/tensors.h"
@@ -30,7 +31,7 @@ struct Lesson {
   std::function<void(const newtollm::Preset&)> run;
 };
 
-const std::array<Lesson, 7> kLessons = {{
+const std::array<Lesson, 8> kLessons = {{
     {.name = "tensors",
      .description = "01 creation, shapes, indexing, broadcasting",
      .run = newtollm::run_tensors},
@@ -50,6 +51,9 @@ const std::array<Lesson, 7> kLessons = {{
     {.name = "train",
      .description = "06 pre-training with AdamW, loss curves",
      .run = [](const newtollm::Preset& preset) { newtollm::run_train(preset); }},
+    {.name = "finetune",
+     .description = "07 spam classifier: new head, frozen body",
+     .run = newtollm::run_finetune},
 }};
 
 void tokenize_file(const std::string& path) {

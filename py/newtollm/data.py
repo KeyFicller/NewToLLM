@@ -23,7 +23,7 @@ DEFAULT_TEXT_PATH = REPO_ROOT / "assets" / "the-verdict.txt"
 @dataclass(frozen=True)
 class Windows:
     inputs: torch.Tensor  # [num_windows, context_length] int64
-    targets: torch.Tensor  # same shape, shifted by one token
+    targets: torch.Tensor  # next tokens (same shape) - or class labels [n] in lesson 07
 
     def __len__(self) -> int:
         return int(self.inputs.shape[0])

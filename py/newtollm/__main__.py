@@ -14,6 +14,7 @@ from newtollm.attention import run_attention
 from newtollm.autograd import run_autograd
 from newtollm.config import Preset, load_preset
 from newtollm.data import run_data
+from newtollm.finetune import run_finetune
 from newtollm.gpt import run_gpt
 from newtollm.modules import run_modules
 from newtollm.tensors import run_tensors
@@ -28,6 +29,7 @@ LESSONS: dict[str, tuple[str, Callable[[Preset], None]]] = {
     "gpt": ("05 GPT model and greedy generation", run_gpt),
     "data": ("06 tokens, train/val split, windows, batches", run_data),
     "train": ("06 pre-training with AdamW, loss curves", run_train),
+    "finetune": ("07 spam classifier: new head, frozen body", run_finetune),
 }
 
 

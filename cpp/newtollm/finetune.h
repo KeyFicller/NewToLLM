@@ -31,8 +31,7 @@ struct FinetuneHistory {
   std::vector<double> val_accuracy;
 };
 
-[[nodiscard]] std::vector<Example> load_sms(
-    const std::filesystem::path& path = default_sms_path());
+[[nodiscard]] std::vector<Example> load_sms(const std::filesystem::path& path = default_sms_path());
 [[nodiscard]] std::vector<Example> balanced(const std::vector<Example>& rows, int64_t per_class);
 [[nodiscard]] Windows encode_examples(const std::vector<Example>& examples,
                                       const Tokenizer& tokenizer, int64_t context_length);

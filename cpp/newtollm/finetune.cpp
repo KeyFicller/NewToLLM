@@ -46,9 +46,9 @@ std::vector<Example> balanced(const std::vector<Example>& rows, int64_t per_clas
   // First `per_class` ham and spam messages, interleaved ham, spam, ham, spam, ...
   const auto take = [&](int64_t label) {
     std::vector<Example> out;
-    for (const auto& row :
-         rows | std::views::filter([&](const Example& r) { return r.first == label; }) |
-             std::views::take(per_class)) {
+    for (const auto& row : rows | std::views::filter([&](const Example& r) {
+                             return r.first == label;
+                           }) | std::views::take(per_class)) {
       out.push_back(row);
     }
     return out;
@@ -207,9 +207,9 @@ void run_finetune(const Preset& preset) {
   for (const int64_t i : {-2, -1}) {  // the last two held-out test messages: one ham, one spam
     const auto& [label, text] = examples.at(examples.size() + static_cast<size_t>(i));
     const auto predicted = classify(model, tokenizer, text, cfg.context_length);
-    report::text(std::format("test[{}]", i),
-                 std::format("true {}  predicted {}", kLabels.at(static_cast<size_t>(label)),
-                             predicted));
+    report::text(
+        std::format("test[{}]", i),
+        std::format("true {}  predicted {}", kLabels.at(static_cast<size_t>(label)), predicted));
   }
 }
 

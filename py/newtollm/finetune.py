@@ -82,7 +82,8 @@ def freeze_body(model: GPTModel, n_layers: int) -> None:
 
 # @twin class_logits
 def class_logits(model: GPTModel, inputs: torch.Tensor) -> torch.Tensor:
-    return model(inputs)[:, -1, :]
+    logits: torch.Tensor = model(inputs)[:, -1, :]
+    return logits
 
 
 # @twin accuracy

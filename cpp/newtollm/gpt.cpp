@@ -59,8 +59,8 @@ torch::Tensor GPTModelImpl::forward(const torch::Tensor& idx) {
 void GPTModelImpl::replace_head(int64_t num_outputs) {
   // replace_module() swaps the registered child; the member must be re-pointed too,
   // otherwise forward() would keep calling the old head.
-  out_head_ = replace_module(
-      "out_head", torch::nn::Linear(out_head_->options.in_features(), num_outputs));
+  out_head_ =
+      replace_module("out_head", torch::nn::Linear(out_head_->options.in_features(), num_outputs));
 }
 
 // @twin generate_greedy

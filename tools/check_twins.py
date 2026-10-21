@@ -5,6 +5,12 @@
 A twin pair is ``py/newtollm/<name>.py`` <-> ``cpp/newtollm/<name>.{h,cpp}``.
 Each side marks comparable blocks with ``# @twin <block>`` / ``// @twin <block>``;
 the set of block names must be identical and appear in the same order.
+``// @endtwin`` ends a block early (e.g. to keep trailing declarations out of it).
+
+Inside a block, ``# @step <id>: <中文说明>`` / ``// @step <id>`` anchors split the
+code into logical steps. Both sides must list the same step ids in the same order
+(the C++ side reads the header first, then the source), every block of a lesson
+module (01-07) must have at least one step, and every Python anchor carries a note.
 """
 
 from __future__ import annotations
@@ -19,6 +25,11 @@ PY_DIR = REPO_ROOT / "py" / "newtollm"
 CPP_DIR = REPO_ROOT / "cpp" / "newtollm"
 PY_MARKER = re.compile(r"^\s*# @twin (\w+)\s*$")
 CPP_MARKER = re.compile(r"^\s*// @twin (\w+)\s*$")
+END_MARKER = re.compile(r"^\s*(#|//) @endtwin\s*$")
+PY_STEP = re.compile(r"^\s*# @step (\w+)(?::\s*(.*?))?\s*$")
+CPP_STEP = re.compile(r"^\s*// @step (\w+)(?::\s*(.*?))?\s*$")
+# Lessons 01-07; the infrastructure twins (report, config, tokenizer) may skip steps.
+LESSONS = ("tensors", "autograd", "modules", "attention", "gpt", "data", "train", "finetune")
 # Entry points have no block-level twin: they differ by nature (argparse vs argv).
 UNPAIRED = {"__init__", "__main__"}
 
@@ -35,10 +46,10 @@ def read_blocks(path: Path, marker: re.Pattern[str]) -> list[Block]:
     current: tuple[str, list[str]] | None = None
     for line in path.read_text(encoding="utf-8").splitlines():
         match = marker.match(line)
-        if match:
+        if match or END_MARKER.match(line):
             if current:
                 blocks.append(Block(current[0], current[1]))
-            current = (match.group(1), [])
+            current = (match.group(1), []) if match else None
         elif current is not None:
             current[1].append(line)
     if current:
@@ -68,6 +79,33 @@ def order_in_source(name: str) -> list[str]:
     return [b.name for b in read_blocks(path, CPP_MARKER)]
 
 
+def steps(lines: list[str], marker: re.Pattern[str]) -> list[tuple[str, str]]:
+    """``(id, note)`` for every ``@step`` anchor in a block, in order."""
+    return [(m.group(1), m.group(2) or "") for m in map(marker.match, lines) if m]
+
+
+def check_steps(name: str, py_file: Path) -> list[str]:
+    errors: list[str] = []
+    cpp = {b.name: b.lines for b in cpp_blocks(name)}
+    for block in read_blocks(py_file, PY_MARKER):
+        where = f"{name}.{block.name}"
+        py_steps = steps(block.lines, PY_STEP)
+        cpp_ids = [s for s, _ in steps(cpp.get(block.name, []), CPP_STEP)]
+        py_ids = [s for s, _ in py_steps]
+        if name in LESSONS and not py_ids:
+            errors.append(f"{where}: lesson block has no '# @step' anchors")
+        if py_ids != cpp_ids:
+            errors.append(f"{where}: step ids differ: py={py_ids} cpp={cpp_ids}")
+        if len(set(py_ids)) != len(py_ids):
+            errors.append(f"{where}: duplicate step ids {py_ids}")
+        errors.extend(
+            f"{where}.{sid}: Python anchor needs a note ('# @step {sid}: 说明')"
+            for sid, note in py_steps
+            if not note
+        )
+    return errors
+
+
 def check() -> list[str]:
     errors: list[str] = []
     for name in twin_names():
@@ -85,6 +123,8 @@ def check() -> list[str]:
             )
         elif [n for n in py if n in order_in_source(name)] != order_in_source(name):
             errors.append(f"{name}: block order differs: py={py} cpp={order_in_source(name)}")
+        else:
+            errors.extend(check_steps(name, PY_DIR / f"{name}.py"))
     for path in CPP_DIR.glob("*.h"):
         if path.stem not in twin_names() and path.stem != "main":
             errors.append(f"{path.stem}: C++ file without Python twin")

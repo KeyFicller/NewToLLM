@@ -41,6 +41,22 @@ td.code { font:13px/1.55 "JetBrains Mono","Fira Code",Menlo,Consolas,monospace; 
 td.code.cpp { border-left:2px solid #f34b7d55; } td.code.py { border-left:2px solid #3572a555; }
 td.gap { background:repeating-linear-gradient(135deg,#161b22 0 6px,#1c2128 6px 12px); }
 tr.same td.code { background:var(--same); }
+table.steps col.half { width:50%; }
+table.steps tr.step-head th { text-align:left; background:#1b2330; border-top:1px solid var(--line); padding:7px 10px; font-weight:400; color:#c9d1d9; }
+table.steps tr.step-head.sig th { background:#181d24; }
+.step-no { display:inline-block; min-width:22px; height:22px; line-height:22px; text-align:center; border-radius:11px; background:#30363d; color:#fff; font-size:12px; margin-right:8px; }
+.step-id { color:#7ee787; font-size:12px; margin-right:8px; }
+.step-title { font-weight:600; margin-right:10px; }
+.step-note { display:block; margin:4px 0 0 30px; color:#9da7b3; font-size:13px; }
+.step-note code, .step-title code { background:#2b3340; padding:0 4px; border-radius:3px; }
+td.tside { vertical-align:top; padding:0; background:repeating-linear-gradient(135deg,#161b22 0 6px,#1c2128 6px 12px); border-right:1px solid #21262d; }
+td.tside .seg { background:var(--panel); padding:4px 0; }
+td.tside .cl { display:flex; font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
+td.tside .cl .ln { flex:0 0 38px; color:#6e7681; text-align:right; padding-right:8px; user-select:none; }
+td.tside .cl .code { white-space:pre-wrap; word-break:break-word; flex:1; padding-right:8px; }
+td.tside .cl.has-api { background:#2d2611; }
+td.tside .file-sep { font:11px monospace; color:#8b949e; border-top:1px dashed #30363d; margin:4px 0 2px; padding:2px 46px; }
+.nsteps { font-size:12px; color:var(--muted); margin-left:10px; font-weight:400; }
 td.has-api { background:#2d2611; }
 mark.api { background:#e3b34133; color:inherit; border-bottom:2px solid var(--api); border-radius:3px; cursor:help; }
 .legend.same { background:var(--same); padding:0 6px; border-radius:3px; }

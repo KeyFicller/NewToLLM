@@ -16,6 +16,7 @@ namespace newtollm {
 
 // @twin TrainHistory
 struct TrainHistory {
+  // @step fields
   std::vector<int64_t> steps;
   std::vector<double> train_loss;
   std::vector<int64_t> eval_steps;
@@ -24,6 +25,7 @@ struct TrainHistory {
   double seconds = 0.0;
 };
 
+// @endtwin
 [[nodiscard]] torch::Tensor loss_batch(GPTModel& model, const torch::Tensor& inputs,
                                        const torch::Tensor& targets);
 [[nodiscard]] double evaluate(GPTModel& model, const Windows& windows, int64_t batch_size);

@@ -19,12 +19,15 @@ namespace newtollm {
 
 // @twin Windows
 struct Windows {
+  // @step fields
   torch::Tensor inputs;   // [num_windows, context_length] int64
   torch::Tensor targets;  // next tokens (same shape) - or class labels [n] in lesson 07
 
+  // @step len
   [[nodiscard]] int64_t size() const { return inputs.size(0); }
 };
 
+// @endtwin
 using Batch = std::pair<torch::Tensor, torch::Tensor>;
 
 [[nodiscard]] std::pair<torch::Tensor, torch::Tensor> split_ids(const torch::Tensor& ids,
@@ -38,10 +41,12 @@ using Batch = std::pair<torch::Tensor, torch::Tensor>;
 
 // @twin Dataset
 struct Dataset {
+  // @step fields
   Windows train;
   Windows val;
 };
 
+// @endtwin
 [[nodiscard]] Dataset load_dataset(const Preset& preset, const Tokenizer& tokenizer,
                                    const std::filesystem::path& path = default_text_path());
 void run_data(const Preset& preset);

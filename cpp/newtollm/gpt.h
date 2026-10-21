@@ -43,6 +43,7 @@ class GPTModelImpl : public torch::nn::Module {
   torch::nn::Linear out_head_;
 };
 TORCH_MODULE(GPTModel);
+// @endtwin
 
 [[nodiscard]] torch::Tensor generate_greedy(GPTModel& model, torch::Tensor idx,
                                             int64_t max_new_tokens, int64_t context_length);

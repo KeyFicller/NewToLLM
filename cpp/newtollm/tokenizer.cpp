@@ -8,6 +8,60 @@
 
 namespace newtollm {
 
+namespace {
+
+// A BPE token can end in the middle of a multi-byte UTF-8 character. Python's
+// bytes.decode(errors="replace") turns each maximal invalid subsequence into
+// U+FFFD; this does the same so both sides print identical text.
+std::string replace_invalid_utf8(const std::string& bytes) {
+  constexpr std::string_view kReplacement = "\xEF\xBF\xBD";
+  std::string out;
+  out.reserve(bytes.size());
+  size_t i = 0;
+  while (i < bytes.size()) {
+    const auto lead = static_cast<unsigned char>(bytes[i]);
+    size_t length = 0;
+    unsigned char lo = 0x80;
+    unsigned char hi = 0xBF;
+    if (lead < 0x80) {
+      length = 1;
+    } else if (lead >= 0xC2 && lead <= 0xDF) {
+      length = 2;
+    } else if (lead >= 0xE0 && lead <= 0xEF) {
+      length = 3;
+      lo = lead == 0xE0 ? 0xA0 : 0x80;
+      hi = lead == 0xED ? 0x9F : 0xBF;
+    } else if (lead >= 0xF0 && lead <= 0xF4) {
+      length = 4;
+      lo = lead == 0xF0 ? 0x90 : 0x80;
+      hi = lead == 0xF4 ? 0x8F : 0xBF;
+    }
+    if (length == 0) {
+      out += kReplacement;
+      ++i;
+      continue;
+    }
+    size_t valid = 1;
+    while (valid < length && i + valid < bytes.size()) {
+      const auto next = static_cast<unsigned char>(bytes[i + valid]);
+      const bool ok = valid == 1 ? (next >= lo && next <= hi) : (next >= 0x80 && next <= 0xBF);
+      if (!ok) {
+        break;
+      }
+      ++valid;
+    }
+    if (valid == length) {
+      out.append(bytes, i, length);
+    } else {
+      out += kReplacement;
+    }
+    i += valid;
+  }
+  return out;
+}
+
+}  // namespace
+
 std::filesystem::path default_tokenizer_path() { return repo_root() / "assets" / "gpt2.tiktoken"; }
 
 // @twin Tokenizer
@@ -44,7 +98,7 @@ std::string Tokenizer::decode(const std::vector<int64_t>& ids) const {
     }
     prev = token;
   }
-  return out;
+  return replace_invalid_utf8(out);
 }
 
 }  // namespace newtollm

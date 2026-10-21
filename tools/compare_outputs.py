@@ -51,7 +51,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--atol", type=float, default=1e-4)
     args = parser.parse_args(argv)
     mismatches = compare_lines(
-        args.python.read_text().splitlines(), args.cpp.read_text().splitlines(), args.atol
+        args.python.read_text(errors="replace").splitlines(),
+        args.cpp.read_text(errors="replace").splitlines(),
+        args.atol,
     )
     for m in mismatches:
         print(f"line {m.line}: {m.reason}\n  py : {m.python}\n  cpp: {m.cpp}")

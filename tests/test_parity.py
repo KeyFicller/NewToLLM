@@ -5,7 +5,9 @@ from conftest import REPO_ROOT
 EXE = REPO_ROOT / "build" / "cpp_impl" / "tools" / "parity_check"
 
 
-@pytest.mark.skipif(not EXE.exists(), reason="C++ side not built (build/cpp_impl/tools/parity_check)")
+@pytest.mark.skipif(
+    not EXE.exists(), reason="C++ side not built (build/cpp_impl/tools/parity_check)"
+)
 @pytest.mark.parametrize("seed", [123, 7])
 def test_small_model_parity(seed):
     import sys

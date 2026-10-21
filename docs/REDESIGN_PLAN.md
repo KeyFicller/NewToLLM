@@ -76,8 +76,8 @@ docs/results/                   # 实测结果：parity.json、benchmark.json、
 ## 6. 状态
 
 - [x] 1 方案（PR #10）
-- [x] 2 骨架和基础课程
-- [ ] 3 attention 和 gpt
+- [x] 2 骨架和基础课程（PR #11）
+- [x] 3 attention 和 gpt
 - [ ] 4 train
 - [ ] 5 finetune
 - [ ] 6 站点

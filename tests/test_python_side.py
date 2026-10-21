@@ -9,14 +9,23 @@ from conftest import REPO_ROOT
 
 
 def run_main(*args):
-    return subprocess.run([sys.executable, "main.py", *args], cwd=REPO_ROOT, capture_output=True, text=True)
+    return subprocess.run(
+        [sys.executable, "main.py", *args], cwd=REPO_ROOT, capture_output=True, text=True
+    )
 
 
 def test_list_tasks():
     out = run_main("list")
     assert out.returncode == 0
-    for task in ["verify", "brief", "toy_model", "train", "load_model",
-                 "fine_tuning_classify", "fine_tuning_instruction"]:
+    for task in [
+        "verify",
+        "brief",
+        "toy_model",
+        "train",
+        "load_model",
+        "fine_tuning_classify",
+        "fine_tuning_instruction",
+    ]:
         assert task in out.stdout
 
 

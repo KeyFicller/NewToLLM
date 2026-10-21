@@ -27,7 +27,8 @@ extend-exclude = ["python_impl", "extras", "main.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "C4", "RUF", "ANN", "PT", "RET", "PL"]
-ignore = ["PLR0913", "PLR2004", "PLR0915"]
+# PLR0913/PLR0917: signatures deliberately mirror the positional C++ twins.
+ignore = ["PLR0913", "PLR0917", "PLR2004", "PLR0915"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN", "PLR2004"]
@@ -35,7 +36,7 @@ ignore = ["PLR0913", "PLR2004", "PLR0915"]
 [tool.mypy]
 strict = true
 python_version = "3.10"
-files = ["py/newtollm", "tools/compare_outputs.py", "tools/check_twins.py"]
+files = ["py/newtollm", "tools/compare_outputs.py", "tools/check_twins.py", "tools/parity.py"]
 exclude = ["python_impl", "extras"]
 ignore_missing_imports = true
 # torch ships a few unannotated methods (e.g. Tensor.backward).

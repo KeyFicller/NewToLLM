@@ -1,0 +1,6 @@
+# NewToLLM v2 C++ style (cpp/ only; legacy cpp_impl/ keeps the root .clang-format).
+BasedOnStyle: Google
+ColumnLimit: 100
+IncludeBlocks: Preserve
+DerivePointerAlignment: false
+PointerAlignment: Left

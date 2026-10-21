@@ -1,0 +1,16 @@
+pyproject.toml
+py/newtollm/__init__.py
+py/newtollm/__main__.py
+py/newtollm/autograd.py
+py/newtollm/config.py
+py/newtollm/modules.py
+py/newtollm/report.py
+py/newtollm/tensors.py
+py/newtollm/tokenizer.py
+py/newtollm.egg-info/PKG-INFO
+py/newtollm.egg-info/SOURCES.txt
+py/newtollm.egg-info/dependency_links.txt
+py/newtollm.egg-info/requires.txt
+py/newtollm.egg-info/top_level.txt
+tests/test_parity.py
+tests/test_python_side.py

@@ -1,0 +1,8 @@
+torch
+tiktoken
+
+[dev]
+pytest
+ruff
+mypy
+pygments

@@ -6,6 +6,9 @@ include(FetchContent)
 set(TOKENIZERS_BUILD_TEST OFF CACHE BOOL "" FORCE)
 set(TOKENIZERS_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
 set(TOKENIZERS_BUILD_PYTHON OFF CACHE BOOL "" FORCE)
+# GPT-2's pre-tokenizer regex uses a lookahead `\s+(?!\S)`; RE2 cannot do that.
+set(SUPPORT_REGEX_LOOKAHEAD ON CACHE BOOL "" FORCE)
+set(TOKENIZERS_ENABLE_LOGGING OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
     meta_pytorch_tokenizers
     GIT_REPOSITORY https://github.com/meta-pytorch/tokenizers.git

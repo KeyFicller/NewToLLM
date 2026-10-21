@@ -1,0 +1,30 @@
+# Applies to cpp/ (NewToLLM v2). Torch / third-party headers are excluded by HeaderFilterRegex.
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  cppcoreguidelines-const-correctness,
+  cppcoreguidelines-avoid-non-const-global-variables,
+  cppcoreguidelines-init-variables,
+  cppcoreguidelines-special-member-functions,
+  misc-const-correctness,
+  misc-unused-parameters,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  -modernize-use-nodiscard,
+  performance-*,
+  readability-braces-around-statements,
+  readability-const-return-type,
+  readability-identifier-naming,
+  readability-redundant-*,
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*/cpp/newtollm/.*'
+CheckOptions:
+  - { key: readability-identifier-naming.ClassCase, value: CamelCase }
+  - { key: readability-identifier-naming.FunctionCase, value: lower_case }
+  - { key: readability-identifier-naming.VariableCase, value: lower_case }
+  - { key: readability-identifier-naming.PrivateMemberSuffix, value: _ }
+  - { key: readability-identifier-naming.ConstexprVariablePrefix, value: k }
+  - { key: readability-identifier-naming.ConstexprVariableCase, value: CamelCase }
+  - { key: readability-identifier-naming.GlobalConstantPrefix, value: k }
+  - { key: readability-identifier-naming.GlobalConstantCase, value: CamelCase }

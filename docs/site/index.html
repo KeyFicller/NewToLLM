@@ -1,0 +1,49 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>首页 · NewToLLM：PyTorch ⇄ LibTorch</title><link rel="stylesheet" href="style.css"></head><body><aside class="side"><div class="logo">NewToLLM<small>PyTorch ⇄ LibTorch</small></div><a class="on" href="index.html">首页</a><a class="" href="report.html">00 report</a><a class="" href="config.html">00 config</a><a class="" href="tokenizer.html">00 tokenizer</a><a class="" href="tensors.html">01 tensors</a><a class="" href="autograd.html">02 autograd</a><a class="" href="modules.html">03 modules</a><a class="" href="attention.html">04 attention</a><a class="" href="gpt.html">05 gpt</a><a class="" href="data.html">06a data</a><a class="" href="train.html">06b train</a><a class="" href="finetune.html">07 finetune</a><a class="" href="results.html">实测结果</a></aside><main><header class="hero"><h1>一个 GPT，写两遍</h1><p>同一个 GPT-2 小模型，左边 <b>PyTorch</b>，右边 <b>LibTorch (C++)</b>。文件名、类名、函数名、打印格式一一对应；同一个随机种子在两边抽出逐位相同的权重，训练出几乎重合的 loss 曲线。本站每一行代码都直接取自仓库源码，每一个数字都来自工具实测的 JSON。</p></header><div class="cards"><div class="card"><div class="big">11</div>对双胞胎文件</div><div class="card"><div class="big">58</div>个逐块对齐的 @twin 块</div><div class="card"><div class="big">288 = 288</div>训练步数 Python = C++<br><small>（旧版 85 ≠ 75）</small></div><div class="card"><div class="big">1.9e-06</div>逐步训练 loss 最大误差</div><div class="card"><div class="big">1.7e-06</div>同种子初始化 + 前向 logits 最大误差</div></div><h2>课程</h2><table class="lessons"><thead><tr><th>#</th><th>课程</th><th>块</th><th>Python 行</th><th>C++ 行</th><th>C++/Py</th><th>涉及的 API 差异</th></tr></thead><tbody><tr><td>00</td><td><a href="report.html">统一打印：两边输出逐行可比</a></td><td class="r">6</td><td class="r">26</td><td class="r">42</td><td class="r">1.62×</td><td><code>dtype</code> <code>item</code> <code>slice</code></td></tr><tr><td>00</td><td><a href="config.html">共享配置：同一份 presets.json</a></td><td class="r">5</td><td class="r">49</td><td class="r">91</td><td class="r">1.86×</td><td></td></tr><tr><td>00</td><td><a href="tokenizer.html">GPT-2 分词器：同一份词表、同一条正则</a></td><td class="r">1</td><td class="r">16</td><td class="r">56</td><td class="r">3.50×</td><td></td></tr><tr><td>01</td><td><a href="tensors.html">张量：创建、形状、索引、广播</a></td><td class="r">6</td><td class="r">40</td><td class="r">48</td><td class="r">1.20×</td><td><code>dtype</code> <code>index</code> <code>shape</code> <code>slice</code></td></tr><tr><td>02</td><td><a href="autograd.html">自动求导：梯度、no_grad、手写 SGD</a></td><td class="r">4</td><td class="r">44</td><td class="r">54</td><td class="r">1.23×</td><td><code>grad</code> <code>item</code> <code>no_grad</code> <code>requires_grad</code> <code>shape</code></td></tr><tr><td>03</td><td><a href="modules.html">模块：GELU、LayerNorm、FeedForward</a></td><td class="r">5</td><td class="r">47</td><td class="r">85</td><td class="r">1.81×</td><td><code>TORCH_MODULE</code> <code>module</code> <code>register_module</code> <code>register_parameter</code> <code>sequential</code> <code>shape</code></td></tr><tr><td>04</td><td><a href="attention.html">因果多头自注意力</a></td><td class="r">3</td><td class="r">65</td><td class="r">96</td><td class="r">1.48×</td><td><code>TORCH_MODULE</code> <code>dtype</code> <code>index</code> <code>module</code> <code>register_buffer</code> <code>register_module</code> <code>shape</code> <code>slice</code></td></tr><tr><td>05</td><td><a href="gpt.html">GPT 模型与贪心生成</a></td><td class="r">4</td><td class="r">64</td><td class="r">120</td><td class="r">1.88×</td><td><code>TORCH_MODULE</code> <code>arrow</code> <code>dtype</code> <code>index</code> <code>module</code> <code>no_grad</code> <code>register_module</code> <code>replace_module</code> <code>sequential</code> <code>slice</code></td></tr><tr><td>06a</td><td><a href="data.html">数据管线：分词、切分、滑窗、batch</a></td><td class="r">7</td><td class="r">56</td><td class="r">84</td><td class="r">1.50×</td><td><code>dtype</code> <code>generator</code> <code>index</code> <code>slice</code></td></tr><tr><td>06b</td><td><a href="train.html">预训练：交叉熵、AdamW、loss 曲线</a></td><td class="r">6</td><td class="r">73</td><td class="r">111</td><td class="r">1.52×</td><td><code>arrow</code> <code>functional</code> <code>generator</code> <code>item</code> <code>no_grad</code> <code>optim</code></td></tr><tr><td>07</td><td><a href="finetune.html">微调：把 GPT 变成垃圾短信分类器</a></td><td class="r">11</td><td class="r">116</td><td class="r">192</td><td class="r">1.66×</td><td><code>arrow</code> <code>dtype</code> <code>functional</code> <code>generator</code> <code>index</code> <code>item</code> <code>no_grad</code> <code>optim</code> <code>shape</code> <code>slice</code></td></tr></tbody></table><h2>模型结构</h2><div class="mermaid-wrap"><pre class="mermaid">flowchart TD
+    ids[&quot;token ids [B, T]&quot;] --&gt; tok[&quot;tok_emb · Embedding(50257, d)&quot;]
+    ids --&gt; pos[&quot;pos_emb · Embedding(T, d)&quot;]
+    tok --&gt; add((&quot;+&quot;))
+    pos --&gt; add
+    add --&gt; drop[&quot;drop_emb · Dropout&quot;]
+    drop --&gt; blocks
+    subgraph blocks[&quot;trf_blocks · n_layers × TransformerBlock&quot;]
+        direction TB
+        n1[&quot;norm1 · LayerNorm&quot;] --&gt; att[&quot;att · MultiHeadAttention&lt;br/&gt;causal mask = register_buffer&quot;]
+        att --&gt; r1((&quot;+ shortcut&quot;))
+        r1 --&gt; n2[&quot;norm2 · LayerNorm&quot;]
+        n2 --&gt; ff[&quot;ff · FeedForward&lt;br/&gt;Linear → GELU → Linear&quot;]
+        ff --&gt; r2((&quot;+ shortcut&quot;))
+    end
+    blocks --&gt; fn[&quot;final_norm · LayerNorm&quot;]
+    fn --&gt; head[&quot;out_head · Linear(d, 50257)&quot;]
+    head --&gt; logits[&quot;logits [B, T, 50257]&quot;]
+    fn -. &quot;lesson 07: replace_head(2)&quot; .-&gt; cls[&quot;Linear(d, 2) · ham / spam&quot;]
+</pre></div><h2>概念映射：PyTorch ⇄ LibTorch</h2><div class="mermaid-wrap"><pre class="mermaid">flowchart LR
+    subgraph PY[&quot;PyTorch (Python)&quot;]
+        p1[&quot;class X(nn.Module)&quot;]
+        p2[&quot;self.fc = nn.Linear(...)&quot;]
+        p3[&quot;nn.Parameter(t)&quot;]
+        p4[&quot;with torch.no_grad():&quot;]
+        p5[&quot;x[:, 1:]&quot;]
+        p6[&quot;torch.optim.AdamW(params, lr=..)&quot;]
+        p7[&quot;for x, y in DataLoader&quot;]
+        p8[&quot;model(x)&quot;]
+    end
+    subgraph CPP[&quot;LibTorch (C++)&quot;]
+        c1[&quot;class XImpl : torch::nn::Module&lt;br/&gt;TORCH_MODULE(X)&quot;]
+        c2[&quot;fc_(register_module(&amp;quot;fc&amp;quot;, Linear(..)))&quot;]
+        c3[&quot;register_parameter(&amp;quot;w&amp;quot;, t)&quot;]
+        c4[&quot;const torch::NoGradGuard g;&quot;]
+        c5[&quot;x.index({Slice(), Slice(1, None)})&quot;]
+        c6[&quot;AdamW(params, AdamWOptions(lr))&quot;]
+        c7[&quot;for (auto&amp; [x, y] : batches(...))&quot;]
+        c8[&quot;model-&gt;forward(x) / model(x)&quot;]
+    end
+    p1 &lt;--&gt; c1
+    p2 &lt;--&gt; c2
+    p3 &lt;--&gt; c3
+    p4 &lt;--&gt; c4
+    p5 &lt;--&gt; c5
+    p6 &lt;--&gt; c6
+    p7 &lt;--&gt; c7
+    p8 &lt;--&gt; c8
+</pre></div><h2>怎么读</h2><ul class="howto"><li>每课一个页面，左右两栏按 <code>@twin</code> 块对齐，块内按语义逐行对齐；<span class="legend same">灰底</span> = 两边规范化后完全相同，<mark class="api">黄色</mark> = API 差异（悬停看解释），斜线格 = 这一侧没有对应行。</li><li>页面末尾是两边程序的真实输出，逐行对照。</li><li><a href="results.html">实测结果</a>：parity 误差、训练曲线叠加图、benchmark。</li></ul><footer>由 <code>tools/build_site.py</code> 从源码与 <code>docs/results/*.json</code> 生成，请勿手改。</footer></main><script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";mermaid.initialize({startOnLoad: true, theme: "dark", securityLevel: "loose"});</script></body></html>

@@ -21,6 +21,9 @@ END_OF_TEXT = "<|endoftext|>"
 # @twin Tokenizer
 class Tokenizer:
     def __init__(self, path: Path = DEFAULT_TOKENIZER_PATH) -> None:
+        # @step init: 用同一份词表、同一条 GPT-2 正则和 <|endoftext|> 构建分词器
+        # Load ranks first, then wrap them in tiktoken.Encoding. The C++ twin builds a
+        # tokenizers::Tiktoken with the same pattern/specials and then load()s this file.
         ranks = load_tiktoken_bpe(str(path))
         self.end_of_text_id = len(ranks)
         self._encoding = tiktoken.Encoding(
@@ -30,8 +33,10 @@ class Tokenizer:
             special_tokens={END_OF_TEXT: self.end_of_text_id},
         )
 
+    # @step encode: 文本到 token ids 允许特殊 token
     def encode(self, text: str) -> list[int]:
         return self._encoding.encode(text, allowed_special={END_OF_TEXT})
 
+    # @step decode: token ids → 文本
     def decode(self, ids: list[int]) -> str:
         return self._encoding.decode(ids)

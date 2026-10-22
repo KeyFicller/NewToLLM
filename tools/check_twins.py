@@ -28,8 +28,20 @@ CPP_MARKER = re.compile(r"^\s*// @twin (\w+)\s*$")
 END_MARKER = re.compile(r"^\s*(#|//) @endtwin\s*$")
 PY_STEP = re.compile(r"^\s*# @step (\w+)(?::\s*(.*?))?\s*$")
 CPP_STEP = re.compile(r"^\s*// @step (\w+)(?::\s*(.*?))?\s*$")
-# Lessons 01-07; the infrastructure twins (report, config, tokenizer) may skip steps.
-LESSONS = ("tensors", "autograd", "modules", "attention", "gpt", "data", "train", "finetune")
+# Every twin pair with lesson-style @step anchors. Includes infra (report/config/tokenizer).
+LESSONS = (
+    "report",
+    "config",
+    "tokenizer",
+    "tensors",
+    "autograd",
+    "modules",
+    "attention",
+    "gpt",
+    "data",
+    "train",
+    "finetune",
+)
 # Entry points have no block-level twin: they differ by nature (argparse vs argv).
 UNPAIRED = {"__init__", "__main__"}
 

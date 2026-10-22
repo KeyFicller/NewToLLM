@@ -44,6 +44,14 @@ NOTES: dict[str, str] = {
 }
 
 STEP_NOTES: dict[str, str] = {
+    "report.format_value.bool": "C++ 没有单独的 Python 布尔值类型：调用方把 <code>dtype</code> 和数值一起传进来。",
+    "report.show.flatten": "两边都先 <code>detach().flatten().cpu()</code>，打印与训练图、设备无关。",
+    "report.show.sum": "bool 张量求和时升成 int64，避免 <code>true+true</code> 被当成 1-bit 溢出。",
+    "config.GPTConfig.fields": "Python：<code>@dataclass(frozen=True)</code>；C++：聚合 struct + 指定初始化器 <code>.emb_dim = …</code>。",
+    "config.Preset.with_seed": "Python 用 <code>dataclasses.replace</code>；C++ 值拷贝后再改 <code>seed</code>。",
+    "config.load_preset.build": "JSON 字段名与结构体成员一一对应，两边都不用额外 schema。",
+    "tokenizer.Tokenizer.init": "Python 先 <code>load_tiktoken_bpe</code> 再组 <code>Encoding</code>；C++ 先构造 <code>Tiktoken</code> 再 <code>load</code> 同一文件。结果（ids、eot id）一致。",
+    "tokenizer.Tokenizer.decode": "C++ 按 token 增量 <code>decode(prev, id)</code>，再把切断的 UTF-8 修成 U+FFFD，对齐 Python 的 <code>errors='replace'</code>。",
     "tensors.create.make": "形状：Python 元组 `(2, 3)` → C++ 花括号 `{2, 3}`；dtype：`dtype=torch.float32` → 位置参数 `torch::kFloat32`。",
     "tensors.create.seeded": "`manual_seed` 同名；两边 CPU 生成器算法相同，抽出逐位相同的 `randn`。",
     "tensors.create.literal": "C++ 的 `torch::tensor` 不接受嵌套列表：先给一维数据，再 `.view({2, 2})`；整数要显式 `torch::kLong`。",

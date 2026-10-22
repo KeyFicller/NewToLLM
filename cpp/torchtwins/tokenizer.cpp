@@ -69,6 +69,9 @@ Tokenizer::Tokenizer(const std::filesystem::path& path)
     : impl_(std::make_unique<tokenizers::Tiktoken>(
           std::string(kGPT2Pattern), std::vector<std::string>{std::string(kEndOfText)},
           /*bos_token_index=*/0, /*eos_token_index=*/0)) {
+  // @step init
+  // Build the engine with the shared regex/specials, then load the same gpt2.tiktoken file.
+  // Python's order is ranks-then-Encoding; the observable result (ids, eot id) matches.
   if (impl_->load(path.string()) != tokenizers::Error::Ok) {
     throw std::runtime_error("cannot load tokenizer " + path.string());
   }
@@ -80,6 +83,7 @@ Tokenizer::Tokenizer(Tokenizer&&) noexcept = default;
 Tokenizer& Tokenizer::operator=(Tokenizer&&) noexcept = default;
 
 std::vector<int64_t> Tokenizer::encode(const std::string& text) const {
+  // @step encode
   const auto encoded = impl_->encode(text, /*bos=*/0, /*eos=*/0);
   if (!encoded.ok()) {
     throw std::runtime_error("tokenizer failed to encode text");
@@ -88,6 +92,8 @@ std::vector<int64_t> Tokenizer::encode(const std::string& text) const {
 }
 
 std::string Tokenizer::decode(const std::vector<int64_t>& ids) const {
+  // @step decode
+  // decode(prev, token) is incremental; stitch pieces then repair split UTF-8 like Python.
   std::string out;
   uint64_t prev = 0;
   for (const auto id : ids) {

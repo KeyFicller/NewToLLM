@@ -3,12 +3,13 @@
 用 **PyTorch（Python）** 和 **LibTorch（C++）** 各实现一遍同一个小型 GPT。两边文件名、类名、函数名一一对应，
 每课打印的输出逐行相同，权重和 logits 数值一致。可以把它当作 PyTorch ↔ LibTorch 的对照教材。
 
-**👉 并排对照站点：<https://keyficller.github.io/TorchTwins/>**（本地打开 `docs/site/index.html` 也一样）
+**👉 并排对照站点：<https://keyficller.github.io/TorchTwins/>**
 
-站点由 `tools/build_site.py` 从源码自动生成：左边 Python、右边 C++，按 `@twin` 代码块对齐，
-块内再按 `@step` 语义锚点切成一步一行（`# @step qk: 投影 Q/K 并打分` ↔ `// @step qk`），每行附中文说明，
+站点由 `tools/build_site.py` 从源码自动生成（GitHub Pages 每次部署前也会跑一遍，不再提交生成好的 HTML）：
+左边 Python、右边 C++，按 `@twin` 代码块对齐，块内再按 `@step` 语义锚点切成一步一行，
 API 差异高亮并附解释；结果页的表格和图表全部读自 `docs/results/*.json`。
-首页结构图是预渲染的 SVG（`docs/diagrams/`），不依赖 jsDelivr / Mermaid CDN，断网打开 `docs/site/index.html` 也能看完整页。
+首页结构图是预渲染的 SVG（`docs/diagrams/`），不依赖 jsDelivr / Mermaid CDN。
+本地预览：`pip install pygments && python tools/build_site.py`，再打开 `docs/site/index.html`。
 
 ## 课程
 
@@ -56,7 +57,7 @@ ctest --test-dir build                 # C++ 冒烟测试
 python -m pytest tests                 # 两边课程输出 diff、数值 parity、训练曲线 parity
 python tools/parity.py                 # 权重初始化 + 前向 logits 对比
 python tools/train_parity.py           # 逐步 loss 对比
-python tools/build_site.py --check     # 站点与源码同步
+python tools/build_site.py            # 生成对照站点（Pages 部署时也会生成）
 ```
 
 ## 实测结果

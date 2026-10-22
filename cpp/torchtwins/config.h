@@ -12,6 +12,8 @@ namespace torchtwins {
 
 // @twin GPTConfig
 struct GPTConfig {
+  // @step fields
+  // Aggregate + designated initializers (.vocab_size = ...) mirror the Python dataclass.
   int64_t vocab_size = 0;
   int64_t context_length = 0;
   int64_t emb_dim = 0;
@@ -23,6 +25,7 @@ struct GPTConfig {
 
 // @twin TrainConfig
 struct TrainConfig {
+  // @step fields
   int64_t batch_size = 0;
   int64_t stride = 0;
   double learning_rate = 0.0;
@@ -34,6 +37,7 @@ struct TrainConfig {
 
 // @twin FinetuneConfig
 struct FinetuneConfig {
+  // @step fields
   int64_t examples_per_class = 0;
   int64_t batch_size = 0;
   double learning_rate = 0.0;
@@ -43,12 +47,15 @@ struct FinetuneConfig {
 
 // @twin Preset
 struct Preset {
+  // @step fields
   std::string name;
   uint64_t seed = 0;
   GPTConfig model;
   TrainConfig train;
   FinetuneConfig finetune;
 
+  // @step with_seed
+  // Value-copy then overwrite seed: same idea as dataclasses.replace(...).
   [[nodiscard]] Preset with_seed(uint64_t new_seed) const {
     Preset copy = *this;
     copy.seed = new_seed;

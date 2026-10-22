@@ -44,6 +44,14 @@ NOTES: dict[str, str] = {
 }
 
 STEP_NOTES: dict[str, str] = {
+    "report.format_value.bool": "C++ has no Python-style bool value: the caller passes <code>dtype</code> alongside the number.",
+    "report.show.flatten": "Both sides <code>detach().flatten().cpu()</code> first so printing ignores the graph and device.",
+    "report.show.sum": "Sum bool tensors as int64 so <code>true+true</code> is not a 1-bit overflow.",
+    "config.GPTConfig.fields": "Python: <code>@dataclass(frozen=True)</code>. C++: aggregate struct + designated initializers <code>.emb_dim = ...</code>.",
+    "config.Preset.with_seed": "Python uses <code>dataclasses.replace</code>; C++ value-copies then overwrites <code>seed</code>.",
+    "config.load_preset.build": "JSON keys match struct fields 1:1; neither side needs an extra schema.",
+    "tokenizer.Tokenizer.init": "Python loads ranks then builds <code>Encoding</code>; C++ constructs <code>Tiktoken</code> then <code>load</code>s the same file. Ids and eot id match.",
+    "tokenizer.Tokenizer.decode": "C++ incrementally <code>decode(prev, id)</code>, then repairs split UTF-8 to U+FFFD like Python <code>errors='replace'</code>.",
     "tensors.create.make": "形状：Python 元组 `(2, 3)` → C++ 花括号 `{2, 3}`；dtype：`dtype=torch.float32` → 位置参数 `torch::kFloat32`。",
     "tensors.create.seeded": "`manual_seed` 同名；两边 CPU 生成器算法相同，抽出逐位相同的 `randn`。",
     "tensors.create.literal": "C++ 的 `torch::tensor` 不接受嵌套列表：先给一维数据，再 `.view({2, 2})`；整数要显式 `torch::kLong`。",

@@ -7,10 +7,10 @@ Each side marks comparable blocks with ``# @twin <block>`` / ``// @twin <block>`
 the set of block names must be identical and appear in the same order.
 ``// @endtwin`` ends a block early (e.g. to keep trailing declarations out of it).
 
-Inside a block, ``# @step <id>: <中文说明>`` / ``// @step <id>`` anchors split the
+Inside a block, ``# @step <id>: <note>`` / ``// @step <id>`` anchors split the
 code into logical steps. Both sides must list the same step ids in the same order
-(the C++ side reads the header first, then the source), every block of a lesson
-module (01-07) must have at least one step, and every Python anchor carries a note.
+(the C++ side reads the header first, then the source), every lesson/infra block
+must have at least one step, and every Python anchor carries an English note.
 """
 
 from __future__ import annotations
@@ -28,8 +28,20 @@ CPP_MARKER = re.compile(r"^\s*// @twin (\w+)\s*$")
 END_MARKER = re.compile(r"^\s*(#|//) @endtwin\s*$")
 PY_STEP = re.compile(r"^\s*# @step (\w+)(?::\s*(.*?))?\s*$")
 CPP_STEP = re.compile(r"^\s*// @step (\w+)(?::\s*(.*?))?\s*$")
-# Lessons 01-07; the infrastructure twins (report, config, tokenizer) may skip steps.
-LESSONS = ("tensors", "autograd", "modules", "attention", "gpt", "data", "train", "finetune")
+# Every twin pair with lesson-style @step anchors. Includes infra (report/config/tokenizer).
+LESSONS = (
+    "report",
+    "config",
+    "tokenizer",
+    "tensors",
+    "autograd",
+    "modules",
+    "attention",
+    "gpt",
+    "data",
+    "train",
+    "finetune",
+)
 # Entry points have no block-level twin: they differ by nature (argparse vs argv).
 UNPAIRED = {"__init__", "__main__"}
 
@@ -99,7 +111,7 @@ def check_steps(name: str, py_file: Path) -> list[str]:
         if len(set(py_ids)) != len(py_ids):
             errors.append(f"{where}: duplicate step ids {py_ids}")
         errors.extend(
-            f"{where}.{sid}: Python anchor needs a note ('# @step {sid}: 说明')"
+            f"{where}.{sid}: Python anchor needs a note ('# @step {sid}: english note')"
             for sid, note in py_steps
             if not note
         )

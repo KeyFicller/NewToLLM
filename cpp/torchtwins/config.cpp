@@ -13,18 +13,22 @@ std::filesystem::path default_config_path() { return repo_root() / "configs" / "
 
 // @twin load_preset
 Preset load_preset(const std::string& name, const std::filesystem::path& path) {
+  // @step read
   std::ifstream in(path);
   if (!in) {
     throw std::runtime_error("cannot open " + path.string());
   }
   const auto root = nlohmann::json::parse(in);
   const auto& presets = root.at("presets");
+  // @step lookup
   if (!presets.contains(name)) {
     throw std::out_of_range("unknown preset '" + name + "'");
   }
   const auto& model = presets.at(name).at("model");
   const auto& train = presets.at(name).at("train");
   const auto& finetune = presets.at(name).at("finetune");
+  // @step build
+  // Designated initializers keep field order obvious next to the Python kwargs unpack.
   return Preset{
       .name = name,
       .seed = root.at("seed").get<uint64_t>(),

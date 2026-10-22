@@ -36,6 +36,8 @@ class Tokenizer {
   [[nodiscard]] int64_t end_of_text_id() const { return end_of_text_id_; }
 
  private:
+  // pImpl: hide <pytorch/tokenizers/...> behind a unique_ptr so the public header
+  // stays free of third-party includes (Python just keeps a private _encoding).
   std::unique_ptr<tokenizers::Tiktoken> impl_;
   int64_t end_of_text_id_ = 0;
 };

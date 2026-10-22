@@ -32,6 +32,7 @@ std::vector<Example> load_sms(const std::filesystem::path& path) {
   for (std::string line; std::getline(lines, line);) {
     if (!line.empty()) {
       // @step parse
+      // "ham"/"spam" -> 0/1 via kLabels; text is everything after the tab.
       const auto tab = line.find('\t');
       const auto label = std::ranges::find(kLabels, line.substr(0, tab)) - kLabels.begin();
       if (tab == std::string::npos || label == std::ssize(kLabels)) {
@@ -59,6 +60,7 @@ std::vector<Example> balanced(const std::vector<Example>& rows, int64_t per_clas
   const auto ham = take(0);
   const auto spam = take(1);
   // @step interleave
+  // Keeps both classes in every mini-batch after the ordered 70/10/20 split.
   if (ham.size() != spam.size()) {
     throw std::runtime_error("not enough examples per class");
   }
@@ -75,9 +77,12 @@ Windows encode_examples(const std::vector<Example>& examples, const Tokenizer& t
                         int64_t context_length) {
   // Truncate to `context_length` and *left*-pad, so the last position is always real.
   // @step pad
+  // inputs starts as [N, T] all pad ids.
   const auto pad = tokenizer.end_of_text_id();
   auto inputs = torch::full({std::ssize(examples), context_length}, pad, torch::kLong);
   // @step fill
+  // Write tokens into the right edge so position T-1 is always a real token
+  // (required for last-token classification).
   std::vector<int64_t> labels;
   for (int64_t row = 0; row < std::ssize(examples); ++row) {
     auto ids = tokenizer.encode(examples[static_cast<size_t>(row)].second);
@@ -86,6 +91,7 @@ Windows encode_examples(const std::vector<Example>& examples, const Tokenizer& t
     labels.push_back(examples[static_cast<size_t>(row)].first);
   }
   // @step labels
+  // targets: [N] int64 (not [N, T] like LM windows).
   return {.inputs = inputs, .targets = torch::tensor(labels)};
 }
 
@@ -111,6 +117,7 @@ void freeze_body(GPTModel& model, int64_t n_layers) {
   const std::array<std::string, 3> trainable = {std::format("trf_blocks.{}.", n_layers - 1),
                                                 "final_norm.", "out_head."};
   // @step mark
+  // Freezing earlier blocks keeps most pretrained features; only last block + norm + head adapt.
   for (auto& item : model->named_parameters()) {
     item.value().requires_grad_(std::ranges::any_of(
         trainable, [&](const std::string& prefix) { return item.key().starts_with(prefix); }));
@@ -120,6 +127,8 @@ void freeze_body(GPTModel& model, int64_t n_layers) {
 // @twin class_logits
 torch::Tensor class_logits(GPTModel& model, const torch::Tensor& inputs) {
   // @step last
+  // model(inputs): [B, T, C] with C=2 after replace_head.
+  // index({Slice(), -1, Slice()}) -> [B, C]: classify from the rightmost token state.
   return model(inputs).index({Slice(), -1, Slice()});
 }
 
@@ -161,6 +170,7 @@ FinetuneHistory finetune_model(GPTModel& model, const Preset& preset, const Wind
     double total = 0.0;
     int64_t n = 0;
     for (const auto& [inputs, labels] : batches(train, cfg.batch_size, generator)) {
+      // CE on [B, 2] vs [B] — not the flattened LM layout.
       optimizer.zero_grad();
       const auto loss = F::cross_entropy(class_logits(model, inputs), labels);
       loss.backward();
@@ -180,6 +190,7 @@ FinetuneHistory finetune_model(GPTModel& model, const Preset& preset, const Wind
 std::string classify(GPTModel& model, const Tokenizer& tokenizer, const std::string& text,
                      int64_t context_length) {
   // @step encode
+  // Reuses left-pad so the last position is still a real token.
   const auto inputs = encode_examples({{0, text}}, tokenizer, context_length).inputs;
   // @step predict
   model->eval();
@@ -208,6 +219,7 @@ void run_finetune(const Preset& preset) {
   report::section("new head");
   torch::manual_seed(preset.seed);
   GPTModel model(cfg);
+  // out_head: Linear(emb_dim, vocab) -> Linear(emb_dim, 2).
   model->replace_head(std::ssize(kLabels));
   freeze_body(model, cfg.n_layers);
   report::count("parameters", count_parameters(*model));

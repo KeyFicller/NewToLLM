@@ -20,8 +20,10 @@ namespace torchtwins {
 // @twin Windows
 struct Windows {
   // @step fields
-  torch::Tensor inputs;   // [num_windows, context_length] int64
-  torch::Tensor targets;  // next tokens (same shape) - or class labels [n] in lesson 07
+  // inputs: [num_windows, context_length] int64. targets: next tokens (same shape)
+  // for LM, or class labels [n] in lesson 07.
+  torch::Tensor inputs;
+  torch::Tensor targets;
 
   // @step len
   [[nodiscard]] int64_t size() const { return inputs.size(0); }

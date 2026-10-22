@@ -18,14 +18,17 @@ namespace F = torch::nn::functional;
 torch::Tensor loss_batch(GPTModel& model, const torch::Tensor& inputs,
                          const torch::Tensor& targets) {
   // @step forward
+  // inputs: [B, T] -> logits: [B, T, vocab].
   const auto logits = model(inputs);
   // @step ce
+  // Flatten batch and time so CE sees [B*T, vocab] vs [B*T] — next-token LM loss.
   return F::cross_entropy(logits.flatten(0, 1), targets.flatten());
 }
 
 // @twin evaluate
 double evaluate(GPTModel& model, const Windows& windows, int64_t batch_size) {
   // @step eval
+  // eval() turns off dropout so val loss is deterministic across twins.
   model->eval();
   // @step loop
   double total = 0.0;
@@ -47,10 +50,12 @@ TrainHistory train_model(GPTModel& model, const Preset& preset, const Windows& t
                          const Windows& val) {
   const auto& cfg = preset.train;
   // @step optim
+  // AdamWOptions chain matches Python kwargs; no foreach flag (LibTorch path).
   torch::optim::AdamW optimizer(
       model->parameters(),
       torch::optim::AdamWOptions(cfg.learning_rate).weight_decay(cfg.weight_decay));
   // @step state
+  // Seeded Generator keeps batch order identical to Python.
   const auto generator = at::make_generator<at::CPUGeneratorImpl>(preset.seed);
   TrainHistory history;
   const auto start = std::chrono::steady_clock::now();
@@ -59,6 +64,7 @@ TrainHistory train_model(GPTModel& model, const Preset& preset, const Windows& t
   for (int64_t epoch = 0; epoch < cfg.num_epochs; ++epoch) {
     for (const auto& [inputs, targets] : batches(train, cfg.batch_size, generator)) {
       // @step step
+      // zero_grad -> forward/CE -> backward -> step. Shapes stay [B, T].
       optimizer.zero_grad();
       const auto loss = loss_batch(model, inputs, targets);
       loss.backward();
@@ -83,6 +89,7 @@ TrainHistory train_model(GPTModel& model, const Preset& preset, const Windows& t
 // @twin save_history
 void save_history(const TrainHistory& history, const std::filesystem::path& path) {
   // @step dump
+  // No reflection: write each field explicitly. File format matches Python asdict JSON.
   const nlohmann::json json = {
       {"steps", history.steps},
       {"train_loss", history.train_loss},
@@ -121,6 +128,7 @@ void run_train(const Preset& preset, const std::optional<std::filesystem::path>&
   // @step after
   report::section("after training");
   report::scalar("val loss", evaluate(model, data.val, preset.train.batch_size));
+  // unsqueeze(0) adds the batch dim Python gets from tensor([ids]).
   const auto prompt = torch::tensor(tokenizer.encode("Every effort moves you")).unsqueeze(0);
   const auto out =
       generate_greedy(model, prompt, /*max_new_tokens=*/8, preset.model.context_length);

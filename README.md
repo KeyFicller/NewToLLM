@@ -8,6 +8,7 @@
 站点由 `tools/build_site.py` 从源码自动生成：左边 Python、右边 C++，按 `@twin` 代码块对齐，
 块内再按 `@step` 语义锚点切成一步一行（`# @step qk: 投影 Q/K 并打分` ↔ `// @step qk`），每行附中文说明，
 API 差异高亮并附解释；结果页的表格和图表全部读自 `docs/results/*.json`。
+首页结构图是预渲染的 SVG（`docs/diagrams/`），不依赖 jsDelivr / Mermaid CDN，断网打开 `docs/site/index.html` 也能看完整页。
 
 ## 课程
 

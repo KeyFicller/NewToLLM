@@ -15,6 +15,7 @@ import filecmp
 import html
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -26,13 +27,14 @@ from pygments.lexers import CppLexer, PythonLexer
 from pygments.token import STANDARD_TYPES, _TokenType
 
 from check_twins import CPP_MARKER, CPP_STEP, END_MARKER, PY_MARKER, PY_STEP, twin_names
-from site_assets import CSS, MERMAID_ARCH, MERMAID_CONCEPTS, page
+from site_assets import CSS, DIAGRAM_ARCH, DIAGRAM_CONCEPTS, page
 from site_charts import bar_chart, line_chart
 from site_notes import LESSON_TITLES, NOTES, STEP_NOTES
 from site_rules import RULES, ApiRule
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SITE = REPO_ROOT / "docs" / "site"
+DIAGRAMS_SRC = REPO_ROOT / "docs" / "diagrams"
 RESULTS = REPO_ROOT / "docs" / "results"
 PY_DIR = REPO_ROOT / "py" / "torchtwins"
 CPP_DIR = REPO_ROOT / "cpp" / "torchtwins"
@@ -417,10 +419,10 @@ def index_page(summaries: list[dict[str, Any]]) -> str:
         '<h2>课程</h2><table class="lessons"><thead><tr><th>#</th><th>课程</th><th>块</th><th>步骤</th>'
         "<th>Python 行</th><th>C++ 行</th><th>C++/Py</th><th>涉及的 API 差异</th></tr></thead>"
         f"<tbody>{rows}</tbody></table>"
-        '<h2>模型结构</h2><div class="mermaid-wrap"><pre class="mermaid">'
-        f"{MERMAID_ARCH}</pre></div>"
-        '<h2>概念映射：PyTorch ⇄ LibTorch</h2><div class="mermaid-wrap"><pre class="mermaid">'
-        f"{MERMAID_CONCEPTS}</pre></div>"
+        "<h2>模型结构</h2>"
+        f"{DIAGRAM_ARCH}"
+        "<h2>概念映射：PyTorch ⇄ LibTorch</h2>"
+        f"{DIAGRAM_CONCEPTS}"
         '<h2>怎么读</h2><ul class="howto"><li>每课一个页面，左右两栏按 <code>@twin</code> 块对齐；块内按 <code>@step</code> '
         "语义锚点切成若干步，<b>一步一行</b>：同一行左边是 Python、右边是 C++，顶部对齐，短的一侧留空（斜线格）。"
         "不做逐行 diff——两种语言语法差太多，按文本相似度只能对上函数签名。</li>"
@@ -544,6 +546,13 @@ def build(out: Path) -> None:
     (out / "results.html").write_text(results_page(), encoding="utf-8")
     (out / "style.css").write_text(CSS, encoding="utf-8")
     (out / ".nojekyll").write_text("", encoding="utf-8")
+    # Offline SVGs for the homepage (no Mermaid CDN). Sources live in docs/diagrams/.
+    dest = out / "diagrams"
+    if dest.exists():
+        shutil.rmtree(dest)
+    dest.mkdir(parents=True)
+    for svg in sorted(DIAGRAMS_SRC.glob("*.svg")):
+        shutil.copy2(svg, dest / svg.name)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -560,7 +569,11 @@ def main(argv: list[str] | None = None) -> int:
     with tempfile.TemporaryDirectory() as tmp:
         build(Path(tmp))
         cmp = filecmp.dircmp(tmp, SITE)
-        stale = cmp.diff_files + cmp.left_only + cmp.right_only
+        stale = list(cmp.diff_files) + list(cmp.left_only) + list(cmp.right_only)
+        # Also compare diagrams/ (dircmp is not recursive by default).
+        for name in cmp.common_dirs:
+            sub = filecmp.dircmp(Path(tmp) / name, SITE / name)
+            stale.extend(f"{name}/{f}" for f in sub.diff_files + sub.left_only + sub.right_only)
     if stale:
         print(f"[site] stale: {stale} - run python tools/build_site.py")
         return 1

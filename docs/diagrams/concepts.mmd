@@ -1,0 +1,29 @@
+flowchart LR
+    subgraph PY["PyTorch (Python)"]
+        p1["class X(nn.Module)"]
+        p2["self.fc = nn.Linear(...)"]
+        p3["nn.Parameter(t)"]
+        p4["with torch.no_grad():"]
+        p5["x[:, 1:]"]
+        p6["torch.optim.AdamW(params, lr=..)"]
+        p7["for x, y in DataLoader"]
+        p8["model(x)"]
+    end
+    subgraph CPP["LibTorch (C++)"]
+        c1["class XImpl : torch::nn::Module<br/>TORCH_MODULE(X)"]
+        c2["fc_(register_module('fc', Linear(..)))"]
+        c3["register_parameter('w', t)"]
+        c4["const torch::NoGradGuard g;"]
+        c5["x.index({Slice(), Slice(1, None)})"]
+        c6["AdamW(params, AdamWOptions(lr))"]
+        c7["for (auto& [x, y] : batches(...))"]
+        c8["model->forward(x) / model(x)"]
+    end
+    p1 <--> c1
+    p2 <--> c2
+    p3 <--> c3
+    p4 <--> c4
+    p5 <--> c5
+    p6 <--> c6
+    p7 <--> c7
+    p8 <--> c8

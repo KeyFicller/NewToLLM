@@ -1,65 +1,24 @@
-"""Static pieces of the comparison site: page shell, stylesheet, mermaid diagrams."""
+"""Static pieces of the comparison site: page shell, stylesheet, offline diagrams.
+
+Homepage diagrams are pre-rendered SVGs under ``docs/diagrams/`` (sources: ``*.mmd``).
+``tools/build_site.py`` copies them into ``docs/site/diagrams/``. No Mermaid CDN.
+"""
 
 from __future__ import annotations
 
 import html
 
-MERMAID_ARCH = html.escape("""flowchart TD
-    ids["token ids [B, T]"] --> tok["tok_emb · Embedding(50257, d)"]
-    ids --> pos["pos_emb · Embedding(T, d)"]
-    tok --> add(("+"))
-    pos --> add
-    add --> drop["drop_emb · Dropout"]
-    drop --> blocks
-    subgraph blocks["trf_blocks · n_layers × TransformerBlock"]
-        direction TB
-        n1["norm1 · LayerNorm"] --> att["att · MultiHeadAttention<br/>causal mask = register_buffer"]
-        att --> r1(("+ shortcut"))
-        r1 --> n2["norm2 · LayerNorm"]
-        n2 --> ff["ff · FeedForward<br/>Linear → GELU → Linear"]
-        ff --> r2(("+ shortcut"))
-    end
-    blocks --> fn["final_norm · LayerNorm"]
-    fn --> head["out_head · Linear(d, 50257)"]
-    head --> logits["logits [B, T, 50257]"]
-    fn -. "lesson 07: replace_head(2)" .-> cls["Linear(d, 2) · ham / spam"]
-""")
-
-MERMAID_CONCEPTS = html.escape("""flowchart LR
-    subgraph PY["PyTorch (Python)"]
-        p1["class X(nn.Module)"]
-        p2["self.fc = nn.Linear(...)"]
-        p3["nn.Parameter(t)"]
-        p4["with torch.no_grad():"]
-        p5["x[:, 1:]"]
-        p6["torch.optim.AdamW(params, lr=..)"]
-        p7["for x, y in DataLoader"]
-        p8["model(x)"]
-    end
-    subgraph CPP["LibTorch (C++)"]
-        c1["class XImpl : torch::nn::Module<br/>TORCH_MODULE(X)"]
-        c2["fc_(register_module(&quot;fc&quot;, Linear(..)))"]
-        c3["register_parameter(&quot;w&quot;, t)"]
-        c4["const torch::NoGradGuard g;"]
-        c5["x.index({Slice(), Slice(1, None)})"]
-        c6["AdamW(params, AdamWOptions(lr))"]
-        c7["for (auto& [x, y] : batches(...))"]
-        c8["model->forward(x) / model(x)"]
-    end
-    p1 <--> c1
-    p2 <--> c2
-    p3 <--> c3
-    p4 <--> c4
-    p5 <--> c5
-    p6 <--> c6
-    p7 <--> c7
-    p8 <--> c8
-""")
-
-MERMAID_JS = (
-    '<script type="module">import mermaid from '
-    '"https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";'
-    'mermaid.initialize({startOnLoad: true, theme: "dark", securityLevel: "loose"});</script>'
+# Pre-rendered offline diagrams (see docs/diagrams/*.mmd to regenerate with mermaid-cli).
+DIAGRAM_ARCH = (
+    '<div class="diagram-wrap">'
+    '<img src="diagrams/arch.svg" alt="GPT model: embeddings → Transformer blocks → logits '
+    '(lesson 07 replaces the head with a 2-class linear)">'
+    "</div>"
+)
+DIAGRAM_CONCEPTS = (
+    '<div class="diagram-wrap">'
+    '<img src="diagrams/concepts.svg" alt="PyTorch API concepts mapped to LibTorch twins">'
+    "</div>"
 )
 
 
@@ -76,8 +35,7 @@ def page(title: str, body: str, active: str, nav: list[tuple[str, str, str]]) ->
         f'<aside class="side"><div class="logo">TorchTwins<small>PyTorch ⇄ LibTorch</small></div>'
         f"{links}</aside><main>{body}"
         "<footer>由 <code>tools/build_site.py</code> 从源码与 <code>docs/results/*.json</code> 生成，"
-        "请勿手改。</footer></main>"
-        f"{MERMAID_JS}</body></html>\n"
+        "请勿手改。</footer></main></body></html>\n"
     )
 
 
@@ -103,7 +61,8 @@ h1 { margin:.2em 0; } h2 { margin-top:2em; border-bottom:1px solid var(--line); 
 table.lessons { border-collapse:collapse; width:100%; }
 table.lessons td, table.lessons th { border-bottom:1px solid var(--line); padding:6px 10px; text-align:left; }
 td.r { text-align:right; font-variant-numeric:tabular-nums; }
-.mermaid-wrap { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px; overflow:auto; }
+.diagram-wrap { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px; overflow:auto; }
+.diagram-wrap img { display:block; width:100%; height:auto; max-width:900px; margin:0 auto; }
 .lesson-head { display:flex; gap:18px; align-items:center; }
 .lesson-head .num { font-size:44px; font-weight:900; color:var(--api); }
 .files, .stats, .meta { color:var(--muted); margin:2px 0; }

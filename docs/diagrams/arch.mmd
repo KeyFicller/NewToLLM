@@ -1,0 +1,19 @@
+flowchart TD
+    ids["token ids [B, T]"] --> tok["tok_emb · Embedding(50257, d)"]
+    ids --> pos["pos_emb · Embedding(T, d)"]
+    tok --> add(("+"))
+    pos --> add
+    add --> drop["drop_emb · Dropout"]
+    drop --> blocks
+    subgraph blocks["trf_blocks · n_layers × TransformerBlock"]
+        direction TB
+        n1["norm1 · LayerNorm"] --> att["att · MultiHeadAttention<br/>causal mask = register_buffer"]
+        att --> r1(("+ shortcut"))
+        r1 --> n2["norm2 · LayerNorm"]
+        n2 --> ff["ff · FeedForward<br/>Linear → GELU → Linear"]
+        ff --> r2(("+ shortcut"))
+    end
+    blocks --> fn["final_norm · LayerNorm"]
+    fn --> head["out_head · Linear(d, 50257)"]
+    head --> logits["logits [B, T, 50257]"]
+    fn -. "lesson 07: replace_head(2)" .-> cls["Linear(d, 2) · ham / spam"]

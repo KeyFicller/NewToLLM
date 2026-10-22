@@ -1,8 +1,11 @@
 """Generate the static PyTorch <-> LibTorch comparison site in docs/site/.
 
     python tools/build_site.py            # (re)generate docs/site/
-    python tools/build_site.py --check    # fail if docs/site/ is stale
+    python tools/build_site.py --check    # fail if a local docs/site/ snapshot is stale
     python tools/build_site.py --record   # also re-record lesson transcripts (needs the C++ build)
+
+GitHub Pages runs ``build_site.py`` on deploy; ``docs/site/`` is gitignored so PRs do
+not churn generated HTML. Offline SVGs live in ``docs/diagrams/`` and are copied in.
 
 Everything on the site is derived from the sources (``@twin`` blocks) and from the
 measured result files in docs/results/*.json - no number is typed in by hand.

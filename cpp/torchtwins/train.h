@@ -17,6 +17,8 @@ namespace torchtwins {
 // @twin TrainHistory
 struct TrainHistory {
   // @step fields
+  // steps / train_loss: one entry per optimizer step.
+  // eval_steps / val_loss: sampled every eval_every steps.
   std::vector<int64_t> steps;
   std::vector<double> train_loss;
   std::vector<int64_t> eval_steps;

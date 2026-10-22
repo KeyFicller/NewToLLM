@@ -27,6 +27,7 @@ using Example = std::pair<int64_t, std::string>;
 // @twin FinetuneHistory
 struct FinetuneHistory {
   // @step fields
+  // One entry per epoch for loss and train/val accuracy.
   std::vector<double> train_loss;
   std::vector<double> train_accuracy;
   std::vector<double> val_accuracy;

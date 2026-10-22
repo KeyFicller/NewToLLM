@@ -35,16 +35,18 @@ torch::Tensor encode_tensor(const Tokenizer& tokenizer, const std::filesystem::p
 // @twin split_ids
 std::pair<torch::Tensor, torch::Tensor> split_ids(const torch::Tensor& ids, double train_ratio) {
   // Split on *tokens*, not characters: str length (code points) and std::string
-  // length (bytes) disagree on non-ASCII text, token counts never do.
+  // length (bytes) disagree on non-ASCII text; token counts never do.
   // @step cut
   const auto cut = static_cast<int64_t>(train_ratio * static_cast<double>(ids.numel()));
   // @step slice
+  // ids is 1-D [N]; train gets [:cut], val gets [cut:] via Slice.
   return {ids.index({Slice(None, cut)}), ids.index({Slice(cut, None)})};
 }
 
 // @twin make_windows
 Windows make_windows(const torch::Tensor& ids, int64_t context_length, int64_t stride) {
   // @step unfold
+  // Shift by one so each row predicts the next token; unfold -> [num_windows, T].
   const auto inputs = ids.index({Slice(None, -1)}).unfold(0, context_length, stride);
   const auto targets = ids.index({Slice(1, None)}).unfold(0, context_length, stride);
   // @step pack
@@ -56,9 +58,11 @@ std::vector<Batch> batches(const Windows& windows, int64_t batch_size,
                            const std::optional<at::Generator>& generator) {
   // Full batches only (drop_last); shuffle with randperm when given a generator.
   // @step order
+  // Same seeded Generator as Python -> identical epoch order (parity gate).
   const auto n = windows.size();
   const auto order = generator ? torch::randperm(n, generator, torch::kLong) : torch::arange(n);
   // @step slice
+  // Each batch is ([B, T], [B, T]) for LM, or ([B, T], [B]) for classification.
   std::vector<Batch> out;
   for (int64_t start = 0; start + batch_size <= n; start += batch_size) {
     const auto idx = order.index({Slice(start, start + batch_size)});

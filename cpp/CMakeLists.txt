@@ -1,5 +1,14 @@
 # TorchTwins C++ side: one library mirroring py/torchtwins, plus the CLI.
-find_package(Torch REQUIRED)
+find_package(Torch QUIET)
+if(NOT Torch_FOUND)
+  message(FATAL_ERROR
+    "LibTorch not found (looked under CMAKE_PREFIX_PATH, including "
+    "${LIBTORCH_VENDOR_PATH}).\n"
+    "  tools/fetch_libtorch.sh\n"
+    "    downloads the CPU build pinned in tools/libtorch.version into vendor/libtorch\n"
+    "  cmake -DLIBTORCH_VENDOR_PATH=/path/to/libtorch ...\n"
+    "    points at an existing install instead")
+endif()
 
 set(TORCHTWINS_SOURCES
     torchtwins/report.cpp

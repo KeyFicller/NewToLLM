@@ -40,9 +40,9 @@ python -m torchtwins train --preset tiny
 ### C++（LibTorch ≥ 2.10）
 
 ```bash
-# 下载 CPU 版 LibTorch，解压到 vendor/libtorch（或用 -DLIBTORCH_VENDOR_PATH 指定位置）
-curl -sSL -o libtorch.zip "https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-2.10.0%2Bcpu.zip"
-mkdir -p vendor && unzip -q libtorch.zip -d vendor
+# 下载与 CI 相同版本的 CPU LibTorch 到 vendor/libtorch（版本钉在 tools/libtorch.version）
+tools/fetch_libtorch.sh
+# 或指向已有安装：cmake -DLIBTORCH_VENDOR_PATH=/path/to/libtorch ...
 
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build build -j
@@ -91,7 +91,7 @@ assets/                  语料、垃圾短信数据集、gpt2.tiktoken
 py/torchtwins/             Python 包，每课一个文件
 cpp/torchtwins/            C++ 库，与 py/torchtwins 逐文件对应（.h + .cpp）
 cpp/tools/               parity、bench 可执行文件
-tools/                   parity / 训练 parity / benchmark / @twin 检查 / 站点生成 / lint
+tools/                   parity / 训练 parity / benchmark / @twin 检查 / 站点生成 / lint / fetch_libtorch
 tests/                   pytest（同时驱动 C++ 可执行文件）
 docs/site/               生成的对照站点（GitHub Pages）
 docs/results/            实测结果 JSON

@@ -249,6 +249,24 @@ std::string join_keys(const std::vector<std::string>& keys) {
 
 }  // namespace
 
+// @twin audit_shapes
+std::vector<std::string> audit_shapes(const torch::nn::Module& model,
+                                      const std::unordered_map<std::string, torch::Tensor>& state) {
+  // @step diff: names whose tensor.shape != Parameter.shape
+  // Key sets can match while a forgotten Conv1D transpose (or a swapped
+  // emb_dim) leaves the wrong rank/size. copy_() would raise mid-loop and
+  // leave earlier parameters already overwritten — preflight first.
+  std::vector<std::string> bad;
+  for (const auto& item : model.named_parameters()) {
+    const auto& tensor = state.at(item.key());
+    if (tensor.sizes() != item.value().sizes()) {
+      bad.push_back(item.key());
+    }
+  }
+  std::ranges::sort(bad);
+  return bad;
+}
+
 // @twin apply_state
 void apply_state(torch::nn::Module& model,
                  const std::unordered_map<std::string, torch::Tensor>& state) {
@@ -257,6 +275,39 @@ void apply_state(torch::nn::Module& model,
   if (!missing.empty() || !unexpected.empty()) {
     throw std::runtime_error(std::format("remap keys mismatch; missing=[{}] unexpected=[{}]",
                                          join_keys(missing), join_keys(unexpected)));
+  }
+  // @step shapes: refuse mismatches before any copy_ (no half-loaded model)
+  const auto bad_shapes = audit_shapes(model, state);
+  if (!bad_shapes.empty()) {
+    const std::unordered_set<std::string> bad_set(bad_shapes.begin(), bad_shapes.end());
+    std::string details;
+    for (const auto& item : model.named_parameters()) {
+      if (!bad_set.contains(item.key())) {
+        continue;
+      }
+      if (!details.empty()) {
+        details += "; ";
+      }
+      const auto& got = state.at(item.key());
+      const auto& want = item.value();
+      details += item.key();
+      details += ": got [";
+      for (int64_t i = 0; i < got.dim(); ++i) {
+        if (i) {
+          details += ", ";
+        }
+        details += std::to_string(got.size(i));
+      }
+      details += "] want [";
+      for (int64_t i = 0; i < want.dim(); ++i) {
+        if (i) {
+          details += ", ";
+        }
+        details += std::to_string(want.size(i));
+      }
+      details += "]";
+    }
+    throw std::runtime_error("remap shape mismatch; " + details);
   }
   // @step apply: copy_ each Parameter by dotted name
   {
@@ -385,6 +436,39 @@ void run_remap(const Preset& preset) {
     unexpected_rejected = true;
   }
   report::text("unexpected rejects", unexpected_rejected ? "true" : "false");
+
+  // @step shapes: same keys, wrong shape must refuse before any copy_
+  report::section("shapes");
+  // Simulate a remap that forgot to transpose: keep the name, corrupt the
+  // leading dim. Keys still match; copy_ would fail mid-loop without preflight.
+  auto warped = restored_state;
+  const auto& good = warped.at("tok_emb.weight");
+  warped["tok_emb.weight"] = torch::zeros({good.size(0) + 1, good.size(1)}, good.options());
+  auto bad_shapes = audit_shapes(*other, warped);
+  report::text("bad shapes", join_keys(bad_shapes));
+  // Snapshot one untouched param so we can prove refuse-before-copy.
+  torch::Tensor probe_before;
+  for (const auto& item : other->named_parameters()) {
+    if (item.key() == "pos_emb.weight") {
+      probe_before = item.value().detach().clone();
+      break;
+    }
+  }
+  bool shape_rejected = false;
+  try {
+    apply_state(*other, warped);
+  } catch (const std::runtime_error&) {
+    shape_rejected = true;
+  }
+  report::text("shape rejects", shape_rejected ? "true" : "false");
+  torch::Tensor probe_after;
+  for (const auto& item : other->named_parameters()) {
+    if (item.key() == "pos_emb.weight") {
+      probe_after = item.value();
+      break;
+    }
+  }
+  report::scalar("probe unchanged", max_abs_diff(probe_before, probe_after));
 
   // @step openai: bare keys, tied lm_head->wte, same logits as tied HF
   report::section("openai");

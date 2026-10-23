@@ -16,7 +16,8 @@ layout:
 CI never downloads the 124M file: we build a **synthetic** HF-shaped state dict
 from our own weights (real names + Conv1D shapes), remap it back, then deepen
 with (a) a reshape-vs-transpose trap, (b) an OpenAI bare-key + tied-head
-round-trip, and (c) a strict missing/unexpected-key audit that fails closed.
+round-trip, (c) a strict missing/unexpected-key audit that fails closed, and
+(d) a shape-mismatch preflight so a wrong Conv1D layout never half-loads.
 The remapping math is the same as loading a real GPT-2 checkpoint.
 """
 
@@ -229,6 +230,20 @@ def audit_keys(model: nn.Module, state: dict[str, torch.Tensor]) -> tuple[list[s
     return missing, unexpected
 
 
+# @twin audit_shapes
+def audit_shapes(model: nn.Module, state: dict[str, torch.Tensor]) -> list[str]:
+    # @step diff: names whose tensor.shape != Parameter.shape
+    # Key sets can match while a forgotten Conv1D transpose (or a swapped
+    # emb_dim) leaves the wrong rank/size. copy_() would raise mid-loop and
+    # leave earlier parameters already overwritten — preflight first.
+    bad: list[str] = []
+    for name, param in model.named_parameters():
+        tensor = state[name]
+        if tuple(tensor.shape) != tuple(param.shape):
+            bad.append(name)
+    return sorted(bad)
+
+
 # @twin apply_state
 def apply_state(model: nn.Module, state: dict[str, torch.Tensor]) -> None:
     # @step audit: fail closed unless key sets match exactly
@@ -236,6 +251,15 @@ def apply_state(model: nn.Module, state: dict[str, torch.Tensor]) -> None:
     if missing or unexpected:
         msg = f"remap keys mismatch; missing={missing} unexpected={unexpected}"
         raise KeyError(msg)
+    # @step shapes: refuse mismatches before any copy_ (no half-loaded model)
+    bad_shapes = audit_shapes(model, state)
+    if bad_shapes:
+        details = []
+        for name, param in model.named_parameters():
+            if name in bad_shapes:
+                details.append(f"{name}: got {tuple(state[name].shape)} want {tuple(param.shape)}")
+        msg = "remap shape mismatch; " + "; ".join(details)
+        raise ValueError(msg)
     # @step apply: copy_ each Parameter by dotted name
     with torch.no_grad():
         for name, param in model.named_parameters():
@@ -338,6 +362,25 @@ def run_remap(preset: Preset) -> None:
     except KeyError:
         unexpected_rejected = True
     report.text("unexpected rejects", "true" if unexpected_rejected else "false")
+
+    # @step shapes: same keys, wrong shape must refuse before any copy_
+    report.section("shapes")
+    # Simulate a remap that forgot to transpose: keep the name, corrupt the
+    # leading dim. Keys still match; copy_ would fail mid-loop without preflight.
+    warped = dict(restored_state)
+    good = warped["tok_emb.weight"]
+    warped["tok_emb.weight"] = torch.zeros(good.shape[0] + 1, good.shape[1], dtype=good.dtype)
+    bad_shapes = audit_shapes(other, warped)
+    report.text("bad shapes", ",".join(bad_shapes) if bad_shapes else "none")
+    # Snapshot one untouched param so we can prove refuse-before-copy.
+    probe_before = other.pos_emb.weight.detach().clone()
+    shape_rejected = False
+    try:
+        apply_state(other, warped)
+    except ValueError:
+        shape_rejected = True
+    report.text("shape rejects", "true" if shape_rejected else "false")
+    report.scalar("probe unchanged", max_abs_diff(probe_before, other.pos_emb.weight))
 
     # @step openai: bare keys, tied lm_head->wte, same logits as tied HF
     report.section("openai")

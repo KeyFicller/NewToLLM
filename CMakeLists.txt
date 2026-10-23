@@ -7,6 +7,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # LibTorch location: defaults to vendor/libtorch, override with
 #   cmake -DLIBTORCH_VENDOR_PATH=/path/to/libtorch ...
+# or fetch the CPU build CI uses:
+#   tools/fetch_libtorch.sh
 set(LIBTORCH_VENDOR_PATH ${CMAKE_CURRENT_SOURCE_DIR}/vendor/libtorch CACHE PATH "Path to extracted LibTorch")
 list(APPEND CMAKE_PREFIX_PATH ${LIBTORCH_VENDOR_PATH})
 

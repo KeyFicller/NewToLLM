@@ -23,6 +23,7 @@ LESSONS = [
     "train",
     "finetune",
     "checkpoint",
+    "crossload",
 ]
 
 needs_cpp = pytest.mark.skipif(not CPP_CLI.exists(), reason="C++ side not built")

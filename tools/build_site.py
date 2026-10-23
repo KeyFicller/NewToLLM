@@ -54,6 +54,7 @@ RUNNABLE = [
     "train",
     "finetune",
     "checkpoint",
+    "crossload",
 ]
 
 

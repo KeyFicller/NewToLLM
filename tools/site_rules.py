@@ -157,7 +157,7 @@ RULES: tuple[ApiRule, ...] = (
         "pickle",
         "cpp",
         r"torch::pickle_(save|load)",
-        "IValue 级 pickle：可与 Python torch.save 的张量字节互通；Module state_dict 仍不通用",
+        "IValue 级 pickle：第 09 课便携桥；可与 Python torch.save((names, tensors)) 互通；Module state_dict 仍不通用",
     ),
     # --- checkpoints ---
     _rule(
@@ -189,5 +189,41 @@ RULES: tuple[ApiRule, ...] = (
         "py",
         r"weights_only\s*=\s*True",
         "只反序列化张量，拒绝任意 pickle 对象；更安全的默认加载方式",
+    ),
+    _rule(
+        "copy_",
+        "py",
+        r"\.copy_\(",
+        "按名字把外来张量写进 Parameter；跨运行时装权重的基本动作（C++ 同名）",
+    ),
+    _rule(
+        "copy_",
+        "cpp",
+        r"\.copy_\(",
+        "按名字把外来张量写进已注册的 Parameter；跨运行时装权重的基本动作",
+    ),
+    _rule(
+        "contiguous",
+        "py",
+        r"\.contiguous\(",
+        "序列化前保证密排存储；C++ 同名",
+    ),
+    _rule(
+        "contiguous",
+        "cpp",
+        r"\.contiguous\(",
+        "序列化前保证密排存储，避免 strides 在另一侧被误解",
+    ),
+    _rule(
+        "named_parameters",
+        "py",
+        r"named_parameters\(\)",
+        "点分参数路径；两边顺序一致是 portable / parity 能对上的前提",
+    ),
+    _rule(
+        "named_parameters",
+        "cpp",
+        r"named_parameters\(\)",
+        "点分参数路径；两边顺序一致是 portable / parity 能对上的前提",
     ),
 )

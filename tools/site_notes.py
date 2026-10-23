@@ -21,6 +21,7 @@ LESSON_TITLES: dict[str, tuple[str, str]] = {
     "train": ("06b", "预训练：交叉熵、AdamW、loss 曲线"),
     "finetune": ("07", "微调：把 GPT 变成垃圾短信分类器"),
     "checkpoint": ("08", "检查点：保存权重、装回新模型、logits 复原"),
+    "crossload": ("09", "跨运行时：便携 (names, tensors) pickle 桥"),
 }
 
 NOTES: dict[str, str] = {
@@ -45,6 +46,9 @@ NOTES: dict[str, str] = {
     "checkpoint.save_weights": "Python 存的是 `state_dict`（默认只含 persistent 张量；因果 mask 设了 `persistent=False` 所以不进档，构造时按 `context_length` 重建），容器是 zip+pickle；C++ `torch::save(model)` 走 OutputArchive，buffer 一并写入。两边文件**不能**互换——这是本课最要紧的差异。",
     "checkpoint.load_weights": "Python：`torch.load(..., weights_only=True)` 再 `load_state_dict`；C++：`torch::load(model, path)` 按名字填回已注册的张量。两边都要求目标模型和保存时结构一致。",
     "checkpoint.run_checkpoint": "流程：同种子建模 → 存盘 → 换种子建一个「搅乱」模型 → 装回权重 → 比较 logits。`max abs diff ≈ 0` 证明文件真的带走了权重。",
+    "crossload.export_portable": "便携布局：按 `named_parameters()` 顺序打包 `(names, tensors)`。Python `torch.save` 默认 zip 容器（字节以 PK 开头）；C++ `torch::pickle_save` 写 IValue 协议。两边都能读对方的文件——这和第 08 课的 Module/`state_dict` 档案不同。",
+    "crossload.import_portable": "按**名字** `copy_`，不是按下标。键集合必须与目标模型完全一致；因果 mask 等 buffer 不在档里，靠 `context_length` 重建。Python 读自己写的文件可用 `weights_only=True`；读 C++ `pickle_save` 的文件会带 TorchScript 类型标签，需 `weights_only=False`（只信可信来源，见 `tools/parity.py`）。",
+    "crossload.run_crossload": "同第 08 课的 build → scramble → restore 节奏，但走便携桥。打印 `first parameter` 证明键名也过了线，不只是一袋 float。",
 }
 
 STEP_NOTES: dict[str, str] = {
@@ -177,4 +181,14 @@ STEP_NOTES: dict[str, str] = {
     "checkpoint.run_checkpoint.save": "临时文件路径不打印——两边容器格式不同，字节数也对不上；只报告 `status: saved`。",
     "checkpoint.run_checkpoint.scramble": "`seed + 1` 建第二个模型，logits 必然和 fresh 不同，给后面的「装回」当对照。",
     "checkpoint.run_checkpoint.load": "装回后 `restored` 应对齐 `fresh`；`max abs diff` 接近 0。",
+    "crossload.export_portable.collect": "`named_parameters()` 顺序两边相同（parity 门禁）；名字和张量一起带走。",
+    "crossload.export_portable.dump": "`torch.save((names, tensors))` → `torch::pickle_save(Tuple{List[str], List[Tensor]})`。不是 `state_dict`，也不是 `torch::save(Module)`。",
+    "crossload.import_portable.read": "Python：`torch.load(..., weights_only=True)`（自写文件）；C++：`torch::pickle_load` 读 zip 或原始 pickle。",
+    "crossload.import_portable.apply": "两边都按名字 `copy_`；缺键 / 多键直接报错，避免静默错位。",
+    "crossload.param_names.list": "点分路径，例如 `tok_emb.weight`、`trf_blocks.0.att.w_query.weight`。",
+    "crossload.logits_diff.diff": "`.item()` → `.item<double>()`。",
+    "crossload.run_crossload.build": "同第 05 / 08 课：同种子 + 同一句 prompt；多打一行 `first parameter`。",
+    "crossload.run_crossload.export": "报告 `format: portable pickle (names, tensors)`，和第 08 课的档案划清界限。",
+    "crossload.run_crossload.scramble": "`seed + 1` 搅乱，给 import 当对照。",
+    "crossload.run_crossload.import": "装回后 `max abs diff ≈ 0`；证明便携文件按名字带走了全部参数。",
 }

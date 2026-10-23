@@ -14,6 +14,7 @@ from torchtwins.attention import run_attention
 from torchtwins.autograd import run_autograd
 from torchtwins.checkpoint import run_checkpoint
 from torchtwins.config import Preset, load_preset
+from torchtwins.crossload import run_crossload
 from torchtwins.data import run_data
 from torchtwins.finetune import run_finetune
 from torchtwins.gpt import run_gpt
@@ -32,6 +33,7 @@ LESSONS: dict[str, tuple[str, Callable[[Preset], None]]] = {
     "train": ("06 pre-training with AdamW, loss curves", run_train),
     "finetune": ("07 spam classifier: new head, frozen body", run_finetune),
     "checkpoint": ("08 save/load weights, restore logits", run_checkpoint),
+    "crossload": ("09 portable pickle bridge across runtimes", run_crossload),
 }
 
 

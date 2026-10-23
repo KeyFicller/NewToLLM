@@ -5,6 +5,7 @@
 #include "torchtwins/autograd.h"
 #include "torchtwins/checkpoint.h"
 #include "torchtwins/config.h"
+#include "torchtwins/crossload.h"
 #include "torchtwins/data.h"
 #include "torchtwins/finetune.h"
 #include "torchtwins/gpt.h"
@@ -32,7 +33,7 @@ struct Lesson {
   std::function<void(const torchtwins::Preset&)> run;
 };
 
-const std::array<Lesson, 9> kLessons = {{
+const std::array<Lesson, 10> kLessons = {{
     {.name = "tensors",
      .description = "01 creation, shapes, indexing, broadcasting",
      .run = torchtwins::run_tensors},
@@ -60,6 +61,9 @@ const std::array<Lesson, 9> kLessons = {{
     {.name = "checkpoint",
      .description = "08 save/load weights, restore logits",
      .run = torchtwins::run_checkpoint},
+    {.name = "crossload",
+     .description = "09 portable pickle bridge across runtimes",
+     .run = torchtwins::run_crossload},
 }};
 
 void tokenize_file(const std::string& path) {

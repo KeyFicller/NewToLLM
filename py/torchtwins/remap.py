@@ -15,8 +15,9 @@ layout:
 
 CI never downloads the 124M file: we build a **synthetic** HF-shaped state dict
 from our own weights (real names + Conv1D shapes), remap it back, then deepen
-with (a) a reshape-vs-transpose trap and (b) an OpenAI bare-key + tied-head
-round-trip. The remapping math is the same as loading a real GPT-2 checkpoint.
+with (a) a reshape-vs-transpose trap, (b) an OpenAI bare-key + tied-head
+round-trip, and (c) a strict missing/unexpected-key audit that fails closed.
+The remapping math is the same as loading a real GPT-2 checkpoint.
 """
 
 from __future__ import annotations
@@ -216,15 +217,26 @@ def hf_to_ours(hf: dict[str, torch.Tensor], cfg: GPTConfig) -> dict[str, torch.T
     return ours
 
 
-# @twin apply_state
-def apply_state(model: nn.Module, state: dict[str, torch.Tensor]) -> None:
-    # @step apply: copy_ each Parameter by dotted name
+# @twin audit_keys
+def audit_keys(model: nn.Module, state: dict[str, torch.Tensor]) -> tuple[list[str], list[str]]:
+    # @step diff: expected vs state key sets
+    # Remap can produce the right *shapes* and still omit or invent names.
+    # Missing keys leave random init in place; unexpected keys are usually a
+    # layout bug (forgot to strip a prefix, double-mapped a block, …).
     expected = {name for name, _ in model.named_parameters()}
     missing = sorted(expected - state.keys())
     unexpected = sorted(state.keys() - expected)
+    return missing, unexpected
+
+
+# @twin apply_state
+def apply_state(model: nn.Module, state: dict[str, torch.Tensor]) -> None:
+    # @step audit: fail closed unless key sets match exactly
+    missing, unexpected = audit_keys(model, state)
     if missing or unexpected:
         msg = f"remap keys mismatch; missing={missing} unexpected={unexpected}"
         raise KeyError(msg)
+    # @step apply: copy_ each Parameter by dotted name
     with torch.no_grad():
         for name, param in model.named_parameters():
             param.copy_(state[name])
@@ -298,6 +310,34 @@ def run_remap(preset: Preset) -> None:
     report.show("restored logits", restored)
     # ~0 means transpose + QKV split + renames preserved every weight.
     report.scalar("max abs diff", max_abs_diff(fresh, restored))
+
+    # @step strict: missing / unexpected keys must fail closed (no partial load)
+    report.section("strict")
+    # Drop one real parameter: shapes of the rest still match, but apply_state
+    # must refuse — otherwise that slot keeps scramble-seed garbage.
+    incomplete = {name: value for name, value in restored_state.items() if name != "tok_emb.weight"}
+    missing, unexpected = audit_keys(other, incomplete)
+    report.text("missing", ",".join(missing) if missing else "none")
+    report.text("missing extras", ",".join(unexpected) if unexpected else "none")
+    missing_rejected = False
+    try:
+        apply_state(other, incomplete)
+    except KeyError:
+        missing_rejected = True
+    report.text("missing rejects", "true" if missing_rejected else "false")
+
+    # Invent a key remap might emit after a bad rename: refuse before copy_.
+    bloated = dict(restored_state)
+    bloated["not.a.real.param"] = restored_state["tok_emb.weight"]
+    missing, unexpected = audit_keys(other, bloated)
+    report.text("unexpected", ",".join(unexpected) if unexpected else "none")
+    report.text("unexpected holes", ",".join(missing) if missing else "none")
+    unexpected_rejected = False
+    try:
+        apply_state(other, bloated)
+    except KeyError:
+        unexpected_rejected = True
+    report.text("unexpected rejects", "true" if unexpected_rejected else "false")
 
     # @step openai: bare keys, tied lm_head->wte, same logits as tied HF
     report.section("openai")

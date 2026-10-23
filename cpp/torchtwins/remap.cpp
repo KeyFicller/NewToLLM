@@ -9,6 +9,9 @@
 
 #include <ATen/ATen.h>
 
+#include <algorithm>
+#include <ranges>
+
 #include <format>
 #include <stdexcept>
 #include <string>
@@ -202,22 +205,60 @@ std::unordered_map<std::string, torch::Tensor> hf_to_ours(
   return ours;
 }
 
-// @twin apply_state
-void apply_state(torch::nn::Module& model,
-                 const std::unordered_map<std::string, torch::Tensor>& state) {
-  // @step apply: copy_ each Parameter by dotted name
+// @twin audit_keys
+std::pair<std::vector<std::string>, std::vector<std::string>> audit_keys(
+    const torch::nn::Module& model, const std::unordered_map<std::string, torch::Tensor>& state) {
+  // @step diff: expected vs state key sets
+  // Remap can produce the right *shapes* and still omit or invent names.
+  // Missing keys leave random init in place; unexpected keys are usually a
+  // layout bug (forgot to strip a prefix, double-mapped a block, …).
   std::unordered_set<std::string> expected;
   for (const auto& item : model.named_parameters()) {
     expected.insert(item.key());
   }
-  if (state.size() != expected.size()) {
-    throw std::runtime_error("remap key count mismatch");
-  }
+  std::vector<std::string> missing;
   for (const auto& key : expected) {
     if (!state.contains(key)) {
-      throw std::runtime_error("remap missing key: " + key);
+      missing.push_back(key);
     }
   }
+  std::vector<std::string> unexpected;
+  for (const auto& [key, _] : state) {
+    if (!expected.contains(key)) {
+      unexpected.push_back(key);
+    }
+  }
+  std::ranges::sort(missing);
+  std::ranges::sort(unexpected);
+  return {std::move(missing), std::move(unexpected)};
+}
+
+namespace {
+
+std::string join_keys(const std::vector<std::string>& keys) {
+  if (keys.empty()) {
+    return "none";
+  }
+  std::string out = keys.front();
+  for (size_t i = 1; i < keys.size(); ++i) {
+    out += ",";
+    out += keys[i];
+  }
+  return out;
+}
+
+}  // namespace
+
+// @twin apply_state
+void apply_state(torch::nn::Module& model,
+                 const std::unordered_map<std::string, torch::Tensor>& state) {
+  // @step audit: fail closed unless key sets match exactly
+  const auto [missing, unexpected] = audit_keys(model, state);
+  if (!missing.empty() || !unexpected.empty()) {
+    throw std::runtime_error(std::format("remap keys mismatch; missing=[{}] unexpected=[{}]",
+                                         join_keys(missing), join_keys(unexpected)));
+  }
+  // @step apply: copy_ each Parameter by dotted name
   {
     const torch::NoGradGuard no_grad;
     for (auto& item : model.named_parameters()) {
@@ -313,6 +354,37 @@ void run_remap(const Preset& preset) {
   report::show("restored logits", restored);
   // ~0 means transpose + QKV split + renames preserved every weight.
   report::scalar("max abs diff", max_abs_diff(fresh, restored));
+
+  // @step strict: missing / unexpected keys must fail closed (no partial load)
+  report::section("strict");
+  // Drop one real parameter: shapes of the rest still match, but apply_state
+  // must refuse — otherwise that slot keeps scramble-seed garbage.
+  auto incomplete = restored_state;
+  incomplete.erase("tok_emb.weight");
+  auto [missing, unexpected] = audit_keys(*other, incomplete);
+  report::text("missing", join_keys(missing));
+  report::text("missing extras", join_keys(unexpected));
+  bool missing_rejected = false;
+  try {
+    apply_state(*other, incomplete);
+  } catch (const std::runtime_error&) {
+    missing_rejected = true;
+  }
+  report::text("missing rejects", missing_rejected ? "true" : "false");
+
+  // Invent a key remap might emit after a bad rename: refuse before copy_.
+  auto bloated = restored_state;
+  bloated.emplace("not.a.real.param", restored_state.at("tok_emb.weight"));
+  auto [missing2, unexpected2] = audit_keys(*other, bloated);
+  report::text("unexpected", join_keys(unexpected2));
+  report::text("unexpected holes", join_keys(missing2));
+  bool unexpected_rejected = false;
+  try {
+    apply_state(*other, bloated);
+  } catch (const std::runtime_error&) {
+    unexpected_rejected = true;
+  }
+  report::text("unexpected rejects", unexpected_rejected ? "true" : "false");
 
   // @step openai: bare keys, tied lm_head->wte, same logits as tied HF
   report::section("openai");

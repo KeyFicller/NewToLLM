@@ -541,14 +541,13 @@ void run_remap(const Preset& preset) {
   // @step tie: shared embedding — untied vs tied lm_head, resolve fallback
   report::section("tie");
   // Untied pack keeps an independent out_head; tying is not a no-op rename.
-  report::scalar("untied out_head vs tok_emb",
-                 max_abs_diff(restored_state.at("out_head.weight"),
-                              restored_state.at("tok_emb.weight")));
+  report::scalar("untied out_head vs tok_emb", max_abs_diff(restored_state.at("out_head.weight"),
+                                                            restored_state.at("tok_emb.weight")));
   // Force the weight-tied layout: lm_head holds the same values as wte.
   auto hf_tied = hf;
   hf_tied["lm_head.weight"] = hf_tied.at("transformer.wte.weight").contiguous();
-  report::scalar("resolve tied vs wte", max_abs_diff(resolve_lm_head(hf_tied),
-                                                     hf_tied.at("transformer.wte.weight")));
+  report::scalar("resolve tied vs wte",
+                 max_abs_diff(resolve_lm_head(hf_tied), hf_tied.at("transformer.wte.weight")));
   auto tied_state = hf_to_ours(hf_tied, cfg);
   report::scalar("tied out_head vs tok_emb",
                  max_abs_diff(tied_state.at("out_head.weight"), tied_state.at("tok_emb.weight")));
@@ -567,13 +566,11 @@ void run_remap(const Preset& preset) {
   // Omit lm_head: resolve_lm_head falls back to wte; remapped head matches tied.
   auto hf_omitted = hf_tied;
   hf_omitted.erase("lm_head.weight");
-  report::scalar("resolve omitted vs wte",
-                 max_abs_diff(resolve_lm_head(hf_omitted),
-                              hf_omitted.at("transformer.wte.weight")));
+  report::scalar("resolve omitted vs wte", max_abs_diff(resolve_lm_head(hf_omitted),
+                                                        hf_omitted.at("transformer.wte.weight")));
   auto omitted_state = hf_to_ours(hf_omitted, cfg);
-  report::scalar("omitted out_head vs tied",
-                 max_abs_diff(omitted_state.at("out_head.weight"),
-                              tied_state.at("out_head.weight")));
+  report::scalar("omitted out_head vs tied", max_abs_diff(omitted_state.at("out_head.weight"),
+                                                          tied_state.at("out_head.weight")));
 
   // @step openai: bare keys (no transformer. prefix); same tied fallback
   report::section("openai");

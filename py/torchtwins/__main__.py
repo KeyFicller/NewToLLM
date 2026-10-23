@@ -12,6 +12,7 @@ from pathlib import Path
 
 from torchtwins.attention import run_attention
 from torchtwins.autograd import run_autograd
+from torchtwins.checkpoint import run_checkpoint
 from torchtwins.config import Preset, load_preset
 from torchtwins.data import run_data
 from torchtwins.finetune import run_finetune
@@ -30,6 +31,7 @@ LESSONS: dict[str, tuple[str, Callable[[Preset], None]]] = {
     "data": ("06 tokens, train/val split, windows, batches", run_data),
     "train": ("06 pre-training with AdamW, loss curves", run_train),
     "finetune": ("07 spam classifier: new head, frozen body", run_finetune),
+    "checkpoint": ("08 save/load weights, restore logits", run_checkpoint),
 }
 
 

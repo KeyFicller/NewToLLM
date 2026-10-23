@@ -3,6 +3,7 @@
 //   torchtwins <lesson> [--preset tiny|small|gpt2] [--seed N] [--curve FILE]
 #include "torchtwins/attention.h"
 #include "torchtwins/autograd.h"
+#include "torchtwins/checkpoint.h"
 #include "torchtwins/config.h"
 #include "torchtwins/data.h"
 #include "torchtwins/finetune.h"
@@ -31,7 +32,7 @@ struct Lesson {
   std::function<void(const torchtwins::Preset&)> run;
 };
 
-const std::array<Lesson, 8> kLessons = {{
+const std::array<Lesson, 9> kLessons = {{
     {.name = "tensors",
      .description = "01 creation, shapes, indexing, broadcasting",
      .run = torchtwins::run_tensors},
@@ -56,6 +57,9 @@ const std::array<Lesson, 8> kLessons = {{
     {.name = "finetune",
      .description = "07 spam classifier: new head, frozen body",
      .run = torchtwins::run_finetune},
+    {.name = "checkpoint",
+     .description = "08 save/load weights, restore logits",
+     .run = torchtwins::run_checkpoint},
 }};
 
 void tokenize_file(const std::string& path) {

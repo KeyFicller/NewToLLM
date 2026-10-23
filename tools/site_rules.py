@@ -157,6 +157,37 @@ RULES: tuple[ApiRule, ...] = (
         "pickle",
         "cpp",
         r"torch::pickle_(save|load)",
-        "与 Python torch.save/torch.load 互通的序列化",
+        "IValue 级 pickle：可与 Python torch.save 的张量字节互通；Module state_dict 仍不通用",
+    ),
+    # --- checkpoints ---
+    _rule(
+        "save",
+        "py",
+        r"torch\.save\(",
+        "Python 通常存 state_dict（zip+pickle）；与 LibTorch 的 torch::save 档案不互通",
+    ),
+    _rule(
+        "save",
+        "cpp",
+        r"torch::save\(",
+        "LibTorch OutputArchive 序列化整个 Module；不是 Python 的 state_dict pickle",
+    ),
+    _rule(
+        "load_state_dict",
+        "py",
+        r"\.load_state_dict\(",
+        "按名字把张量拷进当前模块；C++ 侧由 torch::load 一次完成",
+    ),
+    _rule(
+        "load",
+        "cpp",
+        r"torch::load\(",
+        "InputArchive 按名字填回已注册的参数/buffer；对应 Python load_state_dict",
+    ),
+    _rule(
+        "weights_only",
+        "py",
+        r"weights_only\s*=\s*True",
+        "只反序列化张量，拒绝任意 pickle 对象；更安全的默认加载方式",
     ),
 )

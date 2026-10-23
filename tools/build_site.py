@@ -44,7 +44,17 @@ CPP_DIR = REPO_ROOT / "cpp" / "torchtwins"
 CPP_CLI = REPO_ROOT / "build" / "bin" / "torchtwins"
 TRANSCRIPTS = RESULTS / "transcripts.json"
 LESSON_ORDER = list(LESSON_TITLES)
-RUNNABLE = ["tensors", "autograd", "modules", "attention", "gpt", "data", "train", "finetune"]
+RUNNABLE = [
+    "tensors",
+    "autograd",
+    "modules",
+    "attention",
+    "gpt",
+    "data",
+    "train",
+    "finetune",
+    "checkpoint",
+]
 
 
 # ----------------------------------------------------------------------------- sources

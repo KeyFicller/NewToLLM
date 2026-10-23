@@ -24,7 +24,7 @@ API 差异高亮并附解释；结果页的表格和图表全部读自 `docs/res
 | 07 | `finetune` | 垃圾短信分类：换分类头、冻结参数、准确率 | `requires_grad_(False)`，替换子模块 |
 | 08 | `checkpoint` | 保存 / 装回权重，logits 复原 | `torch.save(state_dict)` ↔ `torch::save(model)`（文件格式不互通） |
 | 09 | `crossload` | 便携 `(names, tensors)` pickle，跨运行时可互通 | `torch.save((names, tensors))` ↔ `torch::pickle_save` / `pickle_load` |
-| 10 | `remap` | HF/OpenAI GPT-2 键名重映射（合成张量） | Conv1D `.t()` vs reshape、`c_attn` 拆分、OpenAI 无前缀 + 绑定 `lm_head`、缺键/多余键严格拒绝、形状/dtype 不符预检拒绝 |
+| 10 | `remap` | HF/OpenAI GPT-2 键名重映射（合成张量） | Conv1D `.t()` vs reshape、`c_attn` 拆分、OpenAI 无前缀 + 绑定 `lm_head`、缺键/多余键严格拒绝、形状/dtype/非连续不符预检拒绝 |
 
 另有三个基础设施"双胞胎"：`config`（共享 `configs/presets.json`）、`tokenizer`（离线 GPT-2 BPE）、`report`（统一输出格式）。
 

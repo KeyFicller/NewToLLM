@@ -22,7 +22,7 @@ LESSON_TITLES: dict[str, tuple[str, str]] = {
     "finetune": ("07", "微调：把 GPT 变成垃圾短信分类器"),
     "checkpoint": ("08", "检查点：保存权重、装回新模型、logits 复原"),
     "crossload": ("09", "跨运行时：便携 (names, tensors) pickle 桥"),
-    "remap": ("10", "HF/OpenAI：Conv1D、c_attn、键/形/dtype 严格审计"),
+    "remap": ("10", "HF/OpenAI：Conv1D、c_attn、键/形/dtype/布局严格审计"),
 }
 
 NOTES: dict[str, str] = {
@@ -62,9 +62,10 @@ NOTES: dict[str, str] = {
     "remap.audit_keys": "对比模型 `named_parameters()` 与 state 的键集合，返回排序后的 missing / unexpected。缺键会留下随机初始化；多余键通常是布局/前缀错误。",
     "remap.audit_shapes": "键对上之后再比 `tensor.shape` 与 `Parameter.shape`；返回排序无关的坏名列表。忘了 Conv1D 转置时键仍对、形不对。",
     "remap.audit_dtypes": "键和形都对之后再比 `dtype` / `device`；返回排序无关的坏名列表。float16 档装进 float32 参数时，`copy_` 会静默转型。",
-    "remap.apply_state": "先 `audit_keys`，再 `audit_shapes`，再 `audit_dtypes`；任一失败立刻抛错（fail closed），绝不部分 `copy_`。",
+    "remap.audit_contiguous": "键/形/dtype 都对之后再查 `is_contiguous()`；返回排序无关的坏名列表。`.t()` 后忘了 `.contiguous()` 时，`copy_` 仍会成功但源 state 带着奇怪 strides。",
+    "remap.apply_state": "先 `audit_keys`，再 `audit_shapes`，再 `audit_dtypes`，再 `audit_contiguous`；任一失败立刻抛错（fail closed），绝不部分 `copy_`。",
     "remap.max_abs_diff": "逐元素最大绝对差；往返成功时应 ≈ 0，reshape 陷阱应明显大于 0。",
-    "remap.run_remap": "tiny 预设默认 `qkv_bias=False`，本课强制 `True`。流程：HF 往返 → reshape 陷阱 → 装回 → 缺键/多余键严格拒绝 → 故意改形再拒绝（probe 不变）→ 故意改 dtype 再拒绝（probe 不变）→ OpenAI 无前缀 + 绑定 lm_head 再往返。",
+    "remap.run_remap": "tiny 预设默认 `qkv_bias=False`，本课强制 `True`。流程：HF 往返 → reshape 陷阱 → 装回 → 缺键/多余键严格拒绝 → 故意改形再拒绝（probe 不变）→ 故意改 dtype 再拒绝（probe 不变）→ 故意非连续再拒绝（probe 不变）→ OpenAI 无前缀 + 绑定 lm_head 再往返。",
 }
 
 STEP_NOTES: dict[str, str] = {
@@ -229,9 +230,11 @@ STEP_NOTES: dict[str, str] = {
     "remap.audit_keys.diff": "两边都对 expected/state 做集合差并 `sorted`；C++ 用 `unordered_set` + `std::ranges::sort`。",
     "remap.audit_shapes.diff": "逐参数比 sizes；C++ 用 `tensor.sizes() != param.sizes()`。",
     "remap.audit_dtypes.diff": "逐参数比 `dtype` 与 `device`；C++ 用 `tensor.dtype() != param.dtype()` / `device()`。",
+    "remap.audit_contiguous.diff": "逐参数查 `is_contiguous()`；两边同名 API。",
     "remap.apply_state.audit": "键集不一致立刻抛错，绝不部分 `copy_`。",
     "remap.apply_state.shapes": "形不一致也立刻抛错；Python `ValueError`，C++ `runtime_error`。",
     "remap.apply_state.dtypes": "dtype/device 不一致也立刻抛错；Python `TypeError`，C++ `runtime_error`。",
+    "remap.apply_state.layout": "非连续也立刻抛错；Python `ValueError`，C++ `runtime_error`。",
     "remap.apply_state.apply": "`no_grad` + 按名 `copy_`。",
     "remap.max_abs_diff.diff": "`.item()` → `.item<double>()`。",
     "remap.run_remap.build": "`dataclasses.replace(..., qkv_bias=True)` → 拷贝 struct 再改字段。",
@@ -244,4 +247,5 @@ STEP_NOTES: dict[str, str] = {
     "remap.run_remap.strict": "故意丢掉 `tok_emb.weight` / 塞进 `not.a.real.param`；`apply_state` 必须拒绝，输出 `missing rejects` / `unexpected rejects`。",
     "remap.run_remap.shapes": "键齐全但把 `tok_emb.weight` 改成错误 leading dim；必须拒绝，且 `pos_emb` probe 差值 ≈ 0（证明预检先于 copy_）。",
     "remap.run_remap.dtypes": "键和形都对，但把 `tok_emb.weight` 转成 float16；必须拒绝，且 `pos_emb` probe 差值 ≈ 0（`copy_` 不会静默转型）。",
+    "remap.run_remap.layout": "键/形/dtype 都对，但用 `.t().contiguous().t()` 造非连续 `tok_emb`；必须拒绝，且 `pos_emb` probe 差值 ≈ 0。",
 }

@@ -286,6 +286,25 @@ std::vector<std::string> audit_dtypes(const torch::nn::Module& model,
   return bad;
 }
 
+// @twin audit_contiguous
+std::vector<std::string> audit_contiguous(
+    const torch::nn::Module& model, const std::unordered_map<std::string, torch::Tensor>& state) {
+  // @step diff: names whose tensor is not contiguous in memory
+  // Keys, shapes, and dtypes can all match while a forgotten .contiguous()
+  // after .t() leaves a strided view. copy_() would still succeed and
+  // densify into the Parameter — but the *source* state dict would keep
+  // surprising strides for later save/chunk. Preflight first.
+  std::vector<std::string> bad;
+  for (const auto& item : model.named_parameters()) {
+    const auto& tensor = state.at(item.key());
+    if (!tensor.is_contiguous()) {
+      bad.push_back(item.key());
+    }
+  }
+  std::ranges::sort(bad);
+  return bad;
+}
+
 // @twin apply_state
 void apply_state(torch::nn::Module& model,
                  const std::unordered_map<std::string, torch::Tensor>& state) {
@@ -332,6 +351,11 @@ void apply_state(torch::nn::Module& model,
   const auto bad_dtypes = audit_dtypes(model, state);
   if (!bad_dtypes.empty()) {
     throw std::runtime_error("remap dtype/device mismatch; " + join_keys(bad_dtypes));
+  }
+  // @step layout: refuse non-contiguous tensors before any copy_
+  const auto bad_layout = audit_contiguous(model, state);
+  if (!bad_layout.empty()) {
+    throw std::runtime_error("remap non-contiguous; " + join_keys(bad_layout));
   }
   // @step apply: copy_ each Parameter by dotted name
   {
@@ -524,6 +548,39 @@ void run_remap(const Preset& preset) {
     }
   }
   report::scalar("dtype probe unchanged", max_abs_diff(probe_dtype_before, probe_dtype_after));
+
+  // @step layout: same keys+shapes+dtypes, non-contiguous must refuse before copy_
+  report::section("layout");
+  // Simulate a remap that did .t() but forgot .contiguous(): shape and
+  // dtype match, yet storage is a strided view. copy_ would densify mid-loop.
+  auto strided = restored_state;
+  strided["tok_emb.weight"] = strided.at("tok_emb.weight").t().contiguous().t();
+  auto bad_layout = audit_contiguous(*other, strided);
+  report::text("bad layout", join_keys(bad_layout));
+  report::text("tok_emb contiguous",
+               strided.at("tok_emb.weight").is_contiguous() ? "true" : "false");
+  torch::Tensor probe_layout_before;
+  for (const auto& item : other->named_parameters()) {
+    if (item.key() == "pos_emb.weight") {
+      probe_layout_before = item.value().detach().clone();
+      break;
+    }
+  }
+  bool layout_rejected = false;
+  try {
+    apply_state(*other, strided);
+  } catch (const std::runtime_error&) {
+    layout_rejected = true;
+  }
+  report::text("layout rejects", layout_rejected ? "true" : "false");
+  torch::Tensor probe_layout_after;
+  for (const auto& item : other->named_parameters()) {
+    if (item.key() == "pos_emb.weight") {
+      probe_layout_after = item.value();
+      break;
+    }
+  }
+  report::scalar("layout probe unchanged", max_abs_diff(probe_layout_before, probe_layout_after));
 
   // @step openai: bare keys, tied lm_head->wte, same logits as tied HF
   report::section("openai");

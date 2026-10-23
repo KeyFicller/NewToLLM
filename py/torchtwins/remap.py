@@ -17,8 +17,10 @@ CI never downloads the 124M file: we build a **synthetic** HF-shaped state dict
 from our own weights (real names + Conv1D shapes), remap it back, then deepen
 with (a) a reshape-vs-transpose trap, (b) an OpenAI bare-key + tied-head
 round-trip, (c) a strict missing/unexpected-key audit that fails closed,
-(d) a shape-mismatch preflight so a wrong Conv1D layout never half-loads, and
-(e) a dtype/device preflight so a silent ``copy_`` cast never half-loads.
+(d) a shape-mismatch preflight so a wrong Conv1D layout never half-loads,
+(e) a dtype/device preflight so a silent ``copy_`` cast never half-loads, and
+(f) a contiguity preflight so a transposed view (forgot ``.contiguous()``)
+never lands in the Parameter storage as a strided surprise.
 The remapping math is the same as loading a real GPT-2 checkpoint.
 """
 
@@ -259,6 +261,22 @@ def audit_dtypes(model: nn.Module, state: dict[str, torch.Tensor]) -> list[str]:
     return sorted(bad)
 
 
+
+# @twin audit_contiguous
+def audit_contiguous(model: nn.Module, state: dict[str, torch.Tensor]) -> list[str]:
+    # @step diff: names whose tensor is not contiguous in memory
+    # Keys, shapes, and dtypes can all match while a forgotten ``.contiguous()``
+    # after ``.t()`` leaves a strided view. ``copy_`` would still succeed and
+    # densify into the Parameter — but the *source* state dict would keep
+    # surprising strides for later save/chunk. Preflight first.
+    bad: list[str] = []
+    for name, _param in model.named_parameters():
+        tensor = state[name]
+        if not tensor.is_contiguous():
+            bad.append(name)
+    return sorted(bad)
+
+
 # @twin apply_state
 def apply_state(model: nn.Module, state: dict[str, torch.Tensor]) -> None:
     # @step audit: fail closed unless key sets match exactly
@@ -287,6 +305,11 @@ def apply_state(model: nn.Module, state: dict[str, torch.Tensor]) -> None:
                 )
         msg = "remap dtype/device mismatch; " + "; ".join(details)
         raise TypeError(msg)
+    # @step layout: refuse non-contiguous tensors before any copy_
+    bad_layout = audit_contiguous(model, state)
+    if bad_layout:
+        msg = "remap non-contiguous; " + ",".join(bad_layout)
+        raise ValueError(msg)
     # @step apply: copy_ each Parameter by dotted name
     with torch.no_grad():
         for name, param in model.named_parameters():
@@ -425,6 +448,29 @@ def run_remap(preset: Preset) -> None:
         dtype_rejected = True
     report.text("dtype rejects", "true" if dtype_rejected else "false")
     report.scalar("dtype probe unchanged", max_abs_diff(probe_dtype_before, other.pos_emb.weight))
+
+    # @step layout: same keys+shapes+dtypes, non-contiguous must refuse before copy_
+    report.section("layout")
+    # Simulate a remap that did ``.t()`` but forgot ``.contiguous()``: shape and
+    # dtype match, yet storage is a strided view. copy_ would densify mid-loop.
+    strided = dict(restored_state)
+    strided["tok_emb.weight"] = strided["tok_emb.weight"].t().contiguous().t()
+    bad_layout = audit_contiguous(other, strided)
+    report.text("bad layout", ",".join(bad_layout) if bad_layout else "none")
+    report.text(
+        "tok_emb contiguous",
+        "true" if strided["tok_emb.weight"].is_contiguous() else "false",
+    )
+    probe_layout_before = other.pos_emb.weight.detach().clone()
+    layout_rejected = False
+    try:
+        apply_state(other, strided)
+    except ValueError:
+        layout_rejected = True
+    report.text("layout rejects", "true" if layout_rejected else "false")
+    report.scalar(
+        "layout probe unchanged", max_abs_diff(probe_layout_before, other.pos_emb.weight)
+    )
 
     # @step openai: bare keys, tied lm_head->wte, same logits as tied HF
     report.section("openai")

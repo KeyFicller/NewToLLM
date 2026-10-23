@@ -226,4 +226,28 @@ RULES: tuple[ApiRule, ...] = (
         r"named_parameters\(\)",
         "点分参数路径；两边顺序一致是 portable / parity 能对上的前提",
     ),
+    _rule(
+        "transpose_t",
+        "py",
+        r"\.t\(\)",
+        "Conv1D↔Linear 换形：`(in,out).t()` → `(out,in)`；第 10 课 remap 的核心动作",
+    ),
+    _rule(
+        "transpose_t",
+        "cpp",
+        r"\.t\(\)",
+        "Conv1D↔Linear 换形：`(in,out).t()` → `(out,in)`；第 10 课 remap 的核心动作",
+    ),
+    _rule(
+        "chunk",
+        "py",
+        r"\.chunk\(",
+        "把融合的 `c_attn` 拆成 Q|K|V；C++ 同名，返回 vector",
+    ),
+    _rule(
+        "chunk",
+        "cpp",
+        r"\.chunk\(",
+        "把融合的 `c_attn` 拆成 Q|K|V；返回 std::vector<Tensor>",
+    ),
 )

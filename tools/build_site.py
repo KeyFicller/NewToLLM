@@ -55,6 +55,7 @@ RUNNABLE = [
     "finetune",
     "checkpoint",
     "crossload",
+    "remap",
 ]
 
 

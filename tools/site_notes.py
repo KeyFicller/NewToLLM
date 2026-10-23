@@ -22,6 +22,7 @@ LESSON_TITLES: dict[str, tuple[str, str]] = {
     "finetune": ("07", "微调：把 GPT 变成垃圾短信分类器"),
     "checkpoint": ("08", "检查点：保存权重、装回新模型、logits 复原"),
     "crossload": ("09", "跨运行时：便携 (names, tensors) pickle 桥"),
+    "remap": ("10", "HF/OpenAI：Conv1D 转置与 c_attn 拆分"),
 }
 
 NOTES: dict[str, str] = {
@@ -49,6 +50,14 @@ NOTES: dict[str, str] = {
     "crossload.export_portable": "便携布局：按 `named_parameters()` 顺序打包 `(names, tensors)`。Python `torch.save` 默认 zip 容器（字节以 PK 开头）；C++ `torch::pickle_save` 写 IValue 协议。两边都能读对方的文件——这和第 08 课的 Module/`state_dict` 档案不同。",
     "crossload.import_portable": "按**名字** `copy_`，不是按下标。键集合必须与目标模型完全一致；因果 mask 等 buffer 不在档里，靠 `context_length` 重建。Python 读自己写的文件可用 `weights_only=True`；读 C++ `pickle_save` 的文件会带 TorchScript 类型标签，需 `weights_only=False`（只信可信来源，见 `tools/parity.py`）。",
     "crossload.run_crossload": "同第 08 课的 build → scramble → restore 节奏，但走便携桥。打印 `first parameter` 证明键名也过了线，不只是一袋 float。",
+    "remap.conv1d_to_linear": "HF `Conv1D` 权重是 `(in, out)`；`nn.Linear` 是 `(out, in)`。`.t().contiguous()` 是唯一安全的换形——不要 `view`/`reshape`。",
+    "remap.linear_to_conv1d": "反向同样是转置；用来从我们的 Linear 权重合成 HF 布局（本课用合成张量，不下载 124M）。",
+    "remap.split_qkv": "`c_attn` 在输出维拼了 Q|K|V；转成 Linear 形后沿 dim 0 `chunk(3)`。顺序是 Q 然后 K 然后 V，不是按 head 交错。",
+    "remap.merge_qkv": "`cat` 沿 dim 0 拼回，是 `split_qkv` 的逆。",
+    "remap.ours_to_hf": "名字对照：`tok_emb`→`wte`，`trf_blocks.N.att`→`transformer.h.N.attn`，`ff.layers.0/2`→`mlp.c_fc/c_proj`，`scale/shift`→`weight/bias`。",
+    "remap.hf_to_ours": "装回时：Conv1D 转置、拆 `c_attn`、改名。缺 `lm_head.weight` 时回退到 `wte`（权重绑定）。",
+    "remap.apply_state": "按名字 `copy_`；键集合必须完全一致。",
+    "remap.run_remap": "tiny 预设默认 `qkv_bias=False`，本课强制 `True`（真 GPT-2 有 bias）。流程：建模 → 打成 HF 布局 → 再 remap 回来 → scramble/apply → logits 对齐。",
 }
 
 STEP_NOTES: dict[str, str] = {
@@ -191,4 +200,24 @@ STEP_NOTES: dict[str, str] = {
     "crossload.run_crossload.export": "报告 `format: portable pickle (names, tensors)`，和第 08 课的档案划清界限。",
     "crossload.run_crossload.scramble": "`seed + 1` 搅乱，给 import 当对照。",
     "crossload.run_crossload.import": "装回后 `max abs diff ≈ 0`；证明便携文件按名字带走了全部参数。",
+    "remap.conv1d_to_linear.transpose": "`.t().contiguous()` 两边同名；转置只改 strides，`contiguous` 才真正换布局。",
+    "remap.linear_to_conv1d.transpose": "同上，反向。",
+    "remap.split_qkv.check": "Python 抛 `ValueError`；C++ 抛 `std::runtime_error` + `std::format`。",
+    "remap.split_qkv.chunk": "`tensor.chunk(3, dim=0)` → `combined.chunk(3, 0)` 返回 `vector`。",
+    "remap.merge_qkv.cat": "`torch.cat([...], dim=0)` → `torch::cat({...}, 0)`。",
+    "remap.ours_to_hf.require": "两边都拒绝 `qkv_bias=False`：真 GPT-2 的 `c_attn` 带 bias。",
+    "remap.ours_to_hf.embed": "Embedding 权重不转置，只改名。",
+    "remap.ours_to_hf.layers": "循环层：先拼 QKV 再 `linear_to_conv1d`；MLP 两层 Linear 同样转置。",
+    "remap.ours_to_hf.head": "`final_norm`→`ln_f`，`out_head`→`lm_head`。",
+    "remap.hf_to_ours.require": "目标模型也必须 `qkv_bias=True`。",
+    "remap.hf_to_ours.embed": "`wte`/`wpe` → `tok_emb`/`pos_emb`。",
+    "remap.hf_to_ours.layers": "先 `conv1d_to_linear` 再 `split_qkv`；bias 只 `chunk`（本来就是向量）。",
+    "remap.hf_to_ours.head": "Python `dict.get`；C++ `find` 后回退 `wte`。",
+    "remap.apply_state.apply": "`no_grad` + 按名 `copy_`；缺键直接报错。",
+    "remap.max_abs_diff.diff": "`.item()` → `.item<double>()`。",
+    "remap.run_remap.build": "`dataclasses.replace(..., qkv_bias=True)` → 拷贝 struct 再改字段。",
+    "remap.run_remap.pack": "打印 `c_attn` 的 Conv1D 形、转成 Linear 后的形、以及 query 分块，把转置/拆分看见。",
+    "remap.run_remap.remap": "键数应对上；`status: remapped`。",
+    "remap.run_remap.scramble": "`seed+1` 搅乱。",
+    "remap.run_remap.apply": "`max abs diff ≈ 0` 证明 remap 可逆。",
 }

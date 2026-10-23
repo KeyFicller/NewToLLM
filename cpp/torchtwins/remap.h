@@ -25,6 +25,8 @@ namespace torchtwins {
     const std::unordered_map<std::string, torch::Tensor>& state);
 [[nodiscard]] std::unordered_map<std::string, torch::Tensor> ours_to_hf(
     const std::unordered_map<std::string, torch::Tensor>& ours, const GPTConfig& cfg);
+[[nodiscard]] torch::Tensor resolve_lm_head(
+    const std::unordered_map<std::string, torch::Tensor>& hf);
 [[nodiscard]] std::unordered_map<std::string, torch::Tensor> hf_to_ours(
     const std::unordered_map<std::string, torch::Tensor>& hf, const GPTConfig& cfg);
 [[nodiscard]] std::pair<std::vector<std::string>, std::vector<std::string>> audit_keys(

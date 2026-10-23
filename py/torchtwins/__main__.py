@@ -19,6 +19,7 @@ from torchtwins.data import run_data
 from torchtwins.finetune import run_finetune
 from torchtwins.gpt import run_gpt
 from torchtwins.modules import run_modules
+from torchtwins.remap import run_remap
 from torchtwins.tensors import run_tensors
 from torchtwins.tokenizer import Tokenizer
 from torchtwins.train import run_train
@@ -34,6 +35,7 @@ LESSONS: dict[str, tuple[str, Callable[[Preset], None]]] = {
     "finetune": ("07 spam classifier: new head, frozen body", run_finetune),
     "checkpoint": ("08 save/load weights, restore logits", run_checkpoint),
     "crossload": ("09 portable pickle bridge across runtimes", run_crossload),
+    "remap": ("10 HF/OpenAI GPT-2 key remap (Conv1D, c_attn)", run_remap),
 }
 
 

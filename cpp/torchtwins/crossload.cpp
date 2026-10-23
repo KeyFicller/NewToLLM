@@ -44,7 +44,7 @@ void write_bytes(const std::filesystem::path& path, const std::vector<char>& byt
 void export_portable(GPTModel& model, const std::filesystem::path& path) {
   // @step collect
   // named_parameters() order matches Python (parity gate). Names ride along so
-  // import can match by key — the same skill an OpenAI/HF remap will need.
+  // import can match by key — lesson 10 (remap) builds on the same by-name skill.
   // NOLINTNEXTLINE(misc-const-correctness) — List::push_back needs a mutable handle
   c10::List<std::string> names;
   // NOLINTNEXTLINE(misc-const-correctness)

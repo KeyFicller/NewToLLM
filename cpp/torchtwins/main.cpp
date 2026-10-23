@@ -10,6 +10,7 @@
 #include "torchtwins/finetune.h"
 #include "torchtwins/gpt.h"
 #include "torchtwins/modules.h"
+#include "torchtwins/remap.h"
 #include "torchtwins/tensors.h"
 #include "torchtwins/tokenizer.h"
 #include "torchtwins/train.h"
@@ -33,7 +34,7 @@ struct Lesson {
   std::function<void(const torchtwins::Preset&)> run;
 };
 
-const std::array<Lesson, 10> kLessons = {{
+const std::array<Lesson, 11> kLessons = {{
     {.name = "tensors",
      .description = "01 creation, shapes, indexing, broadcasting",
      .run = torchtwins::run_tensors},
@@ -64,6 +65,9 @@ const std::array<Lesson, 10> kLessons = {{
     {.name = "crossload",
      .description = "09 portable pickle bridge across runtimes",
      .run = torchtwins::run_crossload},
+    {.name = "remap",
+     .description = "10 HF/OpenAI GPT-2 key remap (Conv1D, c_attn)",
+     .run = torchtwins::run_remap},
 }};
 
 void tokenize_file(const std::string& path) {

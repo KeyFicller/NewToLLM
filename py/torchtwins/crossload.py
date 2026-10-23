@@ -9,7 +9,7 @@ That is the same dialect ``tools/parity.py`` uses to shove Python weights into
 the C++ model. Same-runtime round-trip here; a file written by one side loads
 on the other (see comments for the ``weights_only`` pitfall on the C++→Python
 direction). OpenAI / HuggingFace key remapping (Conv1D transpose, combined QKV)
-is the next slice — not this one.
+lives in lesson 10 (`remap`).
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ def export_portable(model: GPTModel, path: Path) -> None:
     # @step collect: names + contiguous parameter tensors
     # named_parameters() order is identical on both twins (parity gate). Names
     # travel with the tensors so a loader can match by key, not by position —
-    # that is what an OpenAI/HF remap will need later.
+    # lesson 10 (`remap`) builds on the same by-name skill.
     names = [name for name, _ in model.named_parameters()]
     tensors = [param.detach().contiguous() for _, param in model.named_parameters()]
     # @step dump: pickle the (names, tensors) pair

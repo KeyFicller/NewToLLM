@@ -279,6 +279,115 @@
     "test[-1]: true spam  predicted spam"
    ],
    "verdict": "IDENTICAL"
+  },
+  "checkpoint": {
+   "python": [
+    "== build ==",
+    "parameters: 3242752",
+    "parameter tensors: 31",
+    "prompt ids: shape=[1, 4] values=[15496, 11, 314, 716] sum=16537",
+    "fresh logits: shape=[1, 4, 50257] values=[0.3325, -0.6050, -0.7106, -0.6964, 0.8440, 0.6953, -0.2607, -0.3080, ...] sum=-205.8346",
+    "== save ==",
+    "status: saved",
+    "== scramble ==",
+    "scrambled logits: shape=[1, 4, 50257] values=[0.7577, -1.3495, 0.6599, 1.2332, 0.1108, 0.7163, 0.5144, 0.0502, ...] sum=-557.9731",
+    "== load ==",
+    "restored logits: shape=[1, 4, 50257] values=[0.3325, -0.6050, -0.7106, -0.6964, 0.8440, 0.6953, -0.2607, -0.3080, ...] sum=-205.8346",
+    "max abs diff: 0.0000"
+   ],
+   "cpp": [
+    "== build ==",
+    "parameters: 3242752",
+    "parameter tensors: 31",
+    "prompt ids: shape=[1, 4] values=[15496, 11, 314, 716] sum=16537",
+    "fresh logits: shape=[1, 4, 50257] values=[0.3325, -0.6050, -0.7106, -0.6964, 0.8440, 0.6953, -0.2607, -0.3080, ...] sum=-205.8346",
+    "== save ==",
+    "status: saved",
+    "== scramble ==",
+    "scrambled logits: shape=[1, 4, 50257] values=[0.7577, -1.3495, 0.6599, 1.2332, 0.1108, 0.7163, 0.5144, 0.0502, ...] sum=-557.9731",
+    "== load ==",
+    "restored logits: shape=[1, 4, 50257] values=[0.3325, -0.6050, -0.7106, -0.6964, 0.8440, 0.6953, -0.2607, -0.3080, ...] sum=-205.8346",
+    "max abs diff: 0.0000"
+   ],
+   "verdict": "IDENTICAL"
+  },
+  "crossload": {
+   "python": [
+    "== build ==",
+    "parameters: 3242752",
+    "parameter tensors: 31",
+    "first parameter: tok_emb.weight",
+    "prompt ids: shape=[1, 4] values=[15496, 11, 314, 716] sum=16537",
+    "fresh logits: shape=[1, 4, 50257] values=[0.3325, -0.6050, -0.7106, -0.6964, 0.8440, 0.6953, -0.2607, -0.3080, ...] sum=-205.8346",
+    "== export ==",
+    "format: portable pickle (names, tensors)",
+    "status: exported",
+    "== scramble ==",
+    "scrambled logits: shape=[1, 4, 50257] values=[0.7577, -1.3495, 0.6599, 1.2332, 0.1108, 0.7163, 0.5144, 0.0502, ...] sum=-557.9731",
+    "== import ==",
+    "restored logits: shape=[1, 4, 50257] values=[0.3325, -0.6050, -0.7106, -0.6964, 0.8440, 0.6953, -0.2607, -0.3080, ...] sum=-205.8346",
+    "max abs diff: 0.0000"
+   ],
+   "cpp": [
+    "== build ==",
+    "parameters: 3242752",
+    "parameter tensors: 31",
+    "first parameter: tok_emb.weight",
+    "prompt ids: shape=[1, 4] values=[15496, 11, 314, 716] sum=16537",
+    "fresh logits: shape=[1, 4, 50257] values=[0.3325, -0.6050, -0.7106, -0.6964, 0.8440, 0.6953, -0.2607, -0.3080, ...] sum=-205.8346",
+    "== export ==",
+    "format: portable pickle (names, tensors)",
+    "status: exported",
+    "== scramble ==",
+    "scrambled logits: shape=[1, 4, 50257] values=[0.7577, -1.3495, 0.6599, 1.2332, 0.1108, 0.7163, 0.5144, 0.0502, ...] sum=-557.9731",
+    "== import ==",
+    "restored logits: shape=[1, 4, 50257] values=[0.3325, -0.6050, -0.7106, -0.6964, 0.8440, 0.6953, -0.2607, -0.3080, ...] sum=-205.8346",
+    "max abs diff: 0.0000"
+   ],
+   "verdict": "IDENTICAL"
+  },
+  "remap": {
+   "python": [
+    "== build ==",
+    "parameters: 3242944",
+    "qkv_bias: true",
+    "prompt ids: shape=[1, 4] values=[15496, 11, 314, 716] sum=16537",
+    "fresh logits: shape=[1, 4, 50257] values=[0.1690, -0.4717, 0.2317, 0.3375, -0.9136, -0.0097, -0.6116, 0.0239, ...] sum=-163.9129",
+    "== pack ==",
+    "hf keys: 29",
+    "c_attn.weight Conv1D: shape=[32, 96] values=[-0.0978, 0.0581, 0.0450, 0.0738, -0.0127, 0.1095, 0.0603, -0.0840, ...] sum=-2.5489",
+    "c_attn.weight as Linear: shape=[96, 32] values=[-0.0978, 0.0017, -0.0292, 0.0503, 0.1439, 0.0413, 0.0978, 0.0441, ...] sum=-2.5489",
+    "c_attn query chunk: shape=[32, 32] values=[-0.0978, 0.0017, -0.0292, 0.0503, 0.1439, 0.0413, 0.0978, 0.0441, ...] sum=1.0489",
+    "== remap ==",
+    "ours keys: 37",
+    "status: remapped",
+    "== scramble ==",
+    "scrambled logits: shape=[1, 4, 50257] values=[0.9804, 0.0198, -0.1012, -0.4092, 0.8984, 0.1912, 0.7697, -1.2163, ...] sum=-557.5391",
+    "== apply ==",
+    "restored logits: shape=[1, 4, 50257] values=[0.1690, -0.4717, 0.2317, 0.3375, -0.9136, -0.0097, -0.6116, 0.0239, ...] sum=-163.9129",
+    "max abs diff: 0.0000"
+   ],
+   "cpp": [
+    "== build ==",
+    "parameters: 3242944",
+    "qkv_bias: true",
+    "prompt ids: shape=[1, 4] values=[15496, 11, 314, 716] sum=16537",
+    "fresh logits: shape=[1, 4, 50257] values=[0.1690, -0.4717, 0.2317, 0.3375, -0.9136, -0.0097, -0.6116, 0.0239, ...] sum=-163.9129",
+    "== pack ==",
+    "hf keys: 29",
+    "c_attn.weight Conv1D: shape=[32, 96] values=[-0.0978, 0.0581, 0.0450, 0.0738, -0.0127, 0.1095, 0.0603, -0.0840, ...] sum=-2.5489",
+    "c_attn.weight as Linear: shape=[96, 32] values=[-0.0978, 0.0017, -0.0292, 0.0503, 0.1439, 0.0413, 0.0978, 0.0441, ...] sum=-2.5489",
+    "c_attn query chunk: shape=[32, 32] values=[-0.0978, 0.0017, -0.0292, 0.0503, 0.1439, 0.0413, 0.0978, 0.0441, ...] sum=1.0489",
+    "== remap ==",
+    "ours keys: 37",
+    "status: remapped",
+    "== scramble ==",
+    "scrambled logits: shape=[1, 4, 50257] values=[0.9804, 0.0198, -0.1012, -0.4092, 0.8984, 0.1912, 0.7697, -1.2163, ...] sum=-557.5391",
+    "== apply ==",
+    "restored logits: shape=[1, 4, 50257] values=[0.1690, -0.4717, 0.2317, 0.3375, -0.9136, -0.0097, -0.6116, 0.0239, ...] sum=-163.9129",
+    "max abs diff: 0.0000"
+   ],
+   "verdict": "IDENTICAL"
   }
  }
 }

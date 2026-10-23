@@ -24,6 +24,7 @@ API 差异高亮并附解释；结果页的表格和图表全部读自 `docs/res
 | 07 | `finetune` | 垃圾短信分类：换分类头、冻结参数、准确率 | `requires_grad_(False)`，替换子模块 |
 | 08 | `checkpoint` | 保存 / 装回权重，logits 复原 | `torch.save(state_dict)` ↔ `torch::save(model)`（文件格式不互通） |
 | 09 | `crossload` | 便携 `(names, tensors)` pickle，跨运行时可互通 | `torch.save((names, tensors))` ↔ `torch::pickle_save` / `pickle_load` |
+| 10 | `remap` | HF/OpenAI GPT-2 键名重映射（合成张量） | Conv1D `.t()`、`c_attn`→`w_query`/`w_key`/`w_value` |
 
 另有三个基础设施"双胞胎"：`config`（共享 `configs/presets.json`）、`tokenizer`（离线 GPT-2 BPE）、`report`（统一输出格式）。
 
@@ -104,4 +105,4 @@ docs/results/            实测结果 JSON
 - 只在 Linux CPU 上验证过，macOS 和 CUDA 没测。
 - 指令微调不在课程范围内。
 - 第 08 课的 Module / `state_dict` 档案仍不互通；第 09 课的便携 `(names, tensors)` pickle 可以跨语言加载（`tools/parity.py` 用的就是这一套）。
-- OpenAI / HuggingFace GPT-2 预训练权重的键名重映射（Conv1D 转置、合并 QKV 拆分）尚未入库，是下一刀。
+- 第 10 课用**合成** HF 布局演示了 Conv1D 转置与 `c_attn` 拆分；尚未接入下载真实 `openai-community/gpt2` 权重（CI 体积/网络），也未覆盖 OpenAI 原始键名（无 `transformer.` 前缀）的变体。

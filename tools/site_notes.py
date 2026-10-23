@@ -22,7 +22,7 @@ LESSON_TITLES: dict[str, tuple[str, str]] = {
     "finetune": ("07", "微调：把 GPT 变成垃圾短信分类器"),
     "checkpoint": ("08", "检查点：保存权重、装回新模型、logits 复原"),
     "crossload": ("09", "跨运行时：便携 (names, tensors) pickle 桥"),
-    "remap": ("10", "HF/OpenAI：Conv1D 转置与 c_attn 拆分"),
+    "remap": ("10", "HF/OpenAI：Conv1D、c_attn、严格键审计"),
 }
 
 NOTES: dict[str, str] = {
@@ -59,9 +59,10 @@ NOTES: dict[str, str] = {
     "remap.from_openai_keys": "若已是 HF 形则原样返回；否则给裸名加上 `transformer.`，`lm_head` 保持顶层。",
     "remap.ours_to_hf": "名字对照：`tok_emb`→`wte`，`trf_blocks.N.att`→`transformer.h.N.attn`，`ff.layers.0/2`→`mlp.c_fc/c_proj`，`scale/shift`→`weight/bias`。",
     "remap.hf_to_ours": "装回时：先 `from_openai_keys` 归一化，再 Conv1D 转置、拆 `c_attn`、改名。缺 `lm_head.weight` 时回退到 `wte`（权重绑定）。",
-    "remap.apply_state": "按名字 `copy_`；键集合必须完全一致。",
+    "remap.audit_keys": "对比模型 `named_parameters()` 与 state 的键集合，返回排序后的 missing / unexpected。缺键会留下随机初始化；多余键通常是布局/前缀错误。",
+    "remap.apply_state": "先 `audit_keys`，键集合不完全一致就抛错（fail closed），再按名字 `copy_`。",
     "remap.max_abs_diff": "逐元素最大绝对差；往返成功时应 ≈ 0，reshape 陷阱应明显大于 0。",
-    "remap.run_remap": "tiny 预设默认 `qkv_bias=False`，本课强制 `True`。流程：HF 往返 → reshape 陷阱 → OpenAI 无前缀 + 绑定 lm_head 再往返。",
+    "remap.run_remap": "tiny 预设默认 `qkv_bias=False`，本课强制 `True`。流程：HF 往返 → reshape 陷阱 → 装回 → 缺键/多余键严格拒绝 → OpenAI 无前缀 + 绑定 lm_head 再往返。",
 }
 
 STEP_NOTES: dict[str, str] = {
@@ -223,7 +224,9 @@ STEP_NOTES: dict[str, str] = {
     "remap.hf_to_ours.embed": "`wte`/`wpe` → `tok_emb`/`pos_emb`。",
     "remap.hf_to_ours.layers": "先 `conv1d_to_linear` 再 `split_qkv`；bias 只 `chunk`（本来就是向量）。",
     "remap.hf_to_ours.head": "Python `dict.get`；C++ `find` 后回退 `wte`。",
-    "remap.apply_state.apply": "`no_grad` + 按名 `copy_`；缺键直接报错。",
+    "remap.audit_keys.diff": "两边都对 expected/state 做集合差并 `sorted`；C++ 用 `unordered_set` + `std::ranges::sort`。",
+    "remap.apply_state.audit": "键集不一致立刻抛错，绝不部分 `copy_`。",
+    "remap.apply_state.apply": "`no_grad` + 按名 `copy_`。",
     "remap.max_abs_diff.diff": "`.item()` → `.item<double>()`。",
     "remap.run_remap.build": "`dataclasses.replace(..., qkv_bias=True)` → 拷贝 struct 再改字段。",
     "remap.run_remap.pack": "打印 `c_attn` 的 Conv1D 形、转成 Linear 后的形、以及 query 分块，把转置/拆分看见。",
@@ -232,4 +235,5 @@ STEP_NOTES: dict[str, str] = {
     "remap.run_remap.remap": "键数应对上；`status: remapped`。",
     "remap.run_remap.scramble": "`seed+1` 搅乱。",
     "remap.run_remap.apply": "`max abs diff ≈ 0` 证明 remap 可逆。",
+    "remap.run_remap.strict": "故意丢掉 `tok_emb.weight` / 塞进 `not.a.real.param`；`apply_state` 必须拒绝，输出 `missing rejects` / `unexpected rejects`。",
 }

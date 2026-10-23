@@ -20,6 +20,7 @@ LESSON_TITLES: dict[str, tuple[str, str]] = {
     "data": ("06a", "数据管线：分词、切分、滑窗、batch"),
     "train": ("06b", "预训练：交叉熵、AdamW、loss 曲线"),
     "finetune": ("07", "微调：把 GPT 变成垃圾短信分类器"),
+    "checkpoint": ("08", "检查点：保存权重、装回新模型、logits 复原"),
 }
 
 NOTES: dict[str, str] = {
@@ -41,6 +42,9 @@ NOTES: dict[str, str] = {
     "train.save_history": "JSON：Python 标准库 <code>json</code> ↔ C++ 的 nlohmann::json（随 tokenizers 一起拉进来），曲线文件格式两边相同，供 parity 门禁和本站使用。",
     "finetune.freeze_body": "按参数名冻结：两边 <code>named_parameters()</code> 的名字完全相同（parity 门禁保证），所以同一组前缀就能选中同一批参数。",
     "finetune.encode_examples": "左侧填充，最后一个位置永远是真实 token，分类直接取最后一位的 logits。Python 切片赋值 ↔ C++ <code>index_put_</code>。",
+    "checkpoint.save_weights": "Python 存的是 `state_dict`（默认只含 persistent 张量；因果 mask 设了 `persistent=False` 所以不进档，构造时按 `context_length` 重建），容器是 zip+pickle；C++ `torch::save(model)` 走 OutputArchive，buffer 一并写入。两边文件**不能**互换——这是本课最要紧的差异。",
+    "checkpoint.load_weights": "Python：`torch.load(..., weights_only=True)` 再 `load_state_dict`；C++：`torch::load(model, path)` 按名字填回已注册的张量。两边都要求目标模型和保存时结构一致。",
+    "checkpoint.run_checkpoint": "流程：同种子建模 → 存盘 → 换种子建一个「搅乱」模型 → 装回权重 → 比较 logits。`max abs diff ≈ 0` 证明文件真的带走了权重。",
 }
 
 STEP_NOTES: dict[str, str] = {
@@ -164,4 +168,13 @@ STEP_NOTES: dict[str, str] = {
     "finetune.run_finetune.head": "可训练参数数：`sum(生成器)` → for 累加。",
     "finetune.run_finetune.tune": "`enumerate(zip(...), 1)` → 下标循环。",
     "finetune.run_finetune.classify": "负下标 `examples[i]` → `examples.at(size + i)`。",
+    "checkpoint.save_weights.dump": "`torch.save(state_dict)` → `torch::save(model)`：Python 显式拿出字典，C++ 直接序列化整个 Module。",
+    "checkpoint.load_weights.read": "`weights_only=True` 拒绝任意 pickle 对象；C++ 的 InputArchive 本来就只认张量槽位。",
+    "checkpoint.load_weights.apply": "`load_state_dict` 按名字拷贝；`torch::load` 一步完成读档 + 填槽。",
+    "checkpoint.tensor_count.count": "两边都数 **parameter tensors**。Python 的因果 mask 是 `register_buffer(..., persistent=False)`，不进 `state_dict`；LibTorch 没有 `persistent=False`，`buffers()` 会多出两张 mask——所以不能拿 `len(state_dict)` 对 `parameters+buffers`。",
+    "checkpoint.max_abs_diff.diff": "`.item()` → `.item<double>()`。",
+    "checkpoint.run_checkpoint.build": "同第 05 课：同种子 + 同一句 prompt，fresh logits 两边逐位可比。",
+    "checkpoint.run_checkpoint.save": "临时文件路径不打印——两边容器格式不同，字节数也对不上；只报告 `status: saved`。",
+    "checkpoint.run_checkpoint.scramble": "`seed + 1` 建第二个模型，logits 必然和 fresh 不同，给后面的「装回」当对照。",
+    "checkpoint.run_checkpoint.load": "装回后 `restored` 应对齐 `fresh`；`max abs diff` 接近 0。",
 }

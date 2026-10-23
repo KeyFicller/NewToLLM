@@ -358,6 +358,9 @@
     "c_attn.weight Conv1D: shape=[32, 96] values=[-0.0978, 0.0581, 0.0450, 0.0738, -0.0127, 0.1095, 0.0603, -0.0840, ...] sum=-2.5489",
     "c_attn.weight as Linear: shape=[96, 32] values=[-0.0978, 0.0017, -0.0292, 0.0503, 0.1439, 0.0413, 0.0978, 0.0441, ...] sum=-2.5489",
     "c_attn query chunk: shape=[32, 32] values=[-0.0978, 0.0017, -0.0292, 0.0503, 0.1439, 0.0413, 0.0978, 0.0441, ...] sum=1.0489",
+    "== trap ==",
+    "reshape (wrong) as Linear: shape=[96, 32] values=[-0.0978, 0.0581, 0.0450, 0.0738, -0.0127, 0.1095, 0.0603, -0.0840, ...] sum=-2.5489",
+    "transpose vs reshape: 0.3451",
     "== remap ==",
     "ours keys: 37",
     "status: remapped",
@@ -365,7 +368,15 @@
     "scrambled logits: shape=[1, 4, 50257] values=[0.9804, 0.0198, -0.1012, -0.4092, 0.8984, 0.1912, 0.7697, -1.2163, ...] sum=-557.5391",
     "== apply ==",
     "restored logits: shape=[1, 4, 50257] values=[0.1690, -0.4717, 0.2317, 0.3375, -0.9136, -0.0097, -0.6116, 0.0239, ...] sum=-163.9129",
-    "max abs diff: 0.0000"
+    "max abs diff: 0.0000",
+    "== openai ==",
+    "tied logits: shape=[1, 4, 50257] values=[2.7937, 1.0848, 7.7310, -10.3437, 4.3333, -1.8594, 7.4236, 4.3686, ...] sum=-913.6021",
+    "openai keys: 28",
+    "lm_head omitted: true",
+    "bare c_attn: h.0.attn.c_attn.weight",
+    "tied out_head vs wte: 0.0000",
+    "openai logits: shape=[1, 4, 50257] values=[2.7937, 1.0848, 7.7310, -10.3437, 4.3333, -1.8594, 7.4236, 4.3686, ...] sum=-913.6021",
+    "openai max abs diff: 0.0000"
    ],
    "cpp": [
     "== build ==",
@@ -378,6 +389,9 @@
     "c_attn.weight Conv1D: shape=[32, 96] values=[-0.0978, 0.0581, 0.0450, 0.0738, -0.0127, 0.1095, 0.0603, -0.0840, ...] sum=-2.5489",
     "c_attn.weight as Linear: shape=[96, 32] values=[-0.0978, 0.0017, -0.0292, 0.0503, 0.1439, 0.0413, 0.0978, 0.0441, ...] sum=-2.5489",
     "c_attn query chunk: shape=[32, 32] values=[-0.0978, 0.0017, -0.0292, 0.0503, 0.1439, 0.0413, 0.0978, 0.0441, ...] sum=1.0489",
+    "== trap ==",
+    "reshape (wrong) as Linear: shape=[96, 32] values=[-0.0978, 0.0581, 0.0450, 0.0738, -0.0127, 0.1095, 0.0603, -0.0840, ...] sum=-2.5489",
+    "transpose vs reshape: 0.3451",
     "== remap ==",
     "ours keys: 37",
     "status: remapped",
@@ -385,7 +399,15 @@
     "scrambled logits: shape=[1, 4, 50257] values=[0.9804, 0.0198, -0.1012, -0.4092, 0.8984, 0.1912, 0.7697, -1.2163, ...] sum=-557.5391",
     "== apply ==",
     "restored logits: shape=[1, 4, 50257] values=[0.1690, -0.4717, 0.2317, 0.3375, -0.9136, -0.0097, -0.6116, 0.0239, ...] sum=-163.9129",
-    "max abs diff: 0.0000"
+    "max abs diff: 0.0000",
+    "== openai ==",
+    "tied logits: shape=[1, 4, 50257] values=[2.7937, 1.0848, 7.7310, -10.3437, 4.3333, -1.8594, 7.4236, 4.3686, ...] sum=-913.6021",
+    "openai keys: 28",
+    "lm_head omitted: true",
+    "bare c_attn: h.0.attn.c_attn.weight",
+    "tied out_head vs wte: 0.0000",
+    "openai logits: shape=[1, 4, 50257] values=[2.7937, 1.0848, 7.7310, -10.3437, 4.3333, -1.8594, 7.4236, 4.3686, ...] sum=-913.6021",
+    "openai max abs diff: 0.0000"
    ],
    "verdict": "IDENTICAL"
   }

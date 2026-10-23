@@ -6,15 +6,17 @@ layout:
 
 1. ``Conv1D`` stores weight as ``(in_features, out_features)``; ``nn.Linear``
    stores ``(out_features, in_features)`` — always transpose when converting.
+   ``reshape`` / ``view`` keep the wrong element order and scramble Q/K/V.
 2. Attention packs Q/K/V into one ``c_attn`` matrix of width ``3 * emb_dim``,
    which we split into ``w_query`` / ``w_key`` / ``w_value``.
-3. Names differ: ``transformer.h.N.attn…`` vs ``trf_blocks.N.att…``,
-   ``mlp.c_fc`` vs ``ff.layers.0``, LayerNorm ``weight``/``bias`` vs our
-   ``scale``/``shift``.
+3. Names differ: HF uses a ``transformer.`` prefix (``transformer.h.N.attn…``);
+   the original OpenAI release uses bare names (``h.N.attn…``, ``wte``). OpenAI
+   also ties ``lm_head`` to ``wte`` and often omits ``lm_head.weight``.
 
 CI never downloads the 124M file: we build a **synthetic** HF-shaped state dict
-from our own weights (real names + Conv1D shapes), remap it back, and check
-logits. The remapping math is the same as loading a real GPT-2 checkpoint.
+from our own weights (real names + Conv1D shapes), remap it back, then deepen
+with (a) a reshape-vs-transpose trap and (b) an OpenAI bare-key + tied-head
+round-trip. The remapping math is the same as loading a real GPT-2 checkpoint.
 """
 
 from __future__ import annotations
@@ -49,6 +51,14 @@ def linear_to_conv1d(weight: torch.Tensor) -> torch.Tensor:
     return weight.t().contiguous()
 
 
+# @twin reshape_trap
+def reshape_trap(weight: torch.Tensor) -> torch.Tensor:
+    # @step reshape: (in, out) -> (out, in) WITHOUT transpose
+    # Same *shape* as conv1d_to_linear, wrong *element order*. Used only to prove
+    # the trap: learners sometimes reshape instead of transpose.
+    return weight.reshape(weight.size(1), weight.size(0))
+
+
 # @twin split_qkv
 def split_qkv(
     combined: torch.Tensor, emb_dim: int
@@ -69,6 +79,39 @@ def split_qkv(
 def merge_qkv(query: torch.Tensor, key: torch.Tensor, value: torch.Tensor) -> torch.Tensor:
     # @step cat: stack Q|K|V back along dim 0
     return torch.cat([query, key, value], dim=0)
+
+
+# @twin to_openai_keys
+def to_openai_keys(hf: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    """HF ``transformer.*`` (+ ``lm_head``) -> OpenAI bare keys; drop ``lm_head``.
+
+    The public OpenAI GPT-2 release used names like ``wte.weight`` / ``h.0.…``
+    with no ``transformer.`` prefix, and tied the output projection to ``wte``
+    so ``lm_head.weight`` is absent.
+    """
+    # @step strip: transformer.foo -> foo
+    out: dict[str, torch.Tensor] = {}
+    for key, value in hf.items():
+        if key.startswith("transformer."):
+            out[key.removeprefix("transformer.")] = value
+    # @step tie: omit lm_head so load falls back to wte
+    return out
+
+
+# @twin from_openai_keys
+def from_openai_keys(state: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    """Accept OpenAI bare keys or HF ``transformer.*``; always return HF names."""
+    # @step passthrough: already HF-shaped
+    if "transformer.wte.weight" in state:
+        return dict(state)
+    # @step prefix: bare OpenAI names -> transformer.*
+    out: dict[str, torch.Tensor] = {}
+    for key, value in state.items():
+        if key == "lm_head.weight":
+            out[key] = value
+        else:
+            out[f"transformer.{key}"] = value
+    return out
 
 
 # @twin ours_to_hf
@@ -123,7 +166,9 @@ def ours_to_hf(ours: dict[str, torch.Tensor], cfg: GPTConfig) -> dict[str, torch
 
 # @twin hf_to_ours
 def hf_to_ours(hf: dict[str, torch.Tensor], cfg: GPTConfig) -> dict[str, torch.Tensor]:
-    """Remap a HuggingFace GPT-2 state dict into TorchTwins Linear names/shapes."""
+    """Remap HF or OpenAI GPT-2 keys into TorchTwins Linear names/shapes."""
+    # @step normalize: bare OpenAI keys -> transformer.* (no-op if already HF)
+    hf = from_openai_keys(hf)
     # @step require: need c_attn bias to fill w_query/w_key/w_value.bias
     if not cfg.qkv_bias:
         msg = "HF GPT-2 c_attn has bias; enable qkv_bias on the target model"
@@ -224,6 +269,12 @@ def run_remap(preset: Preset) -> None:
     query, _key, _value = split_qkv(as_linear, cfg.emb_dim)
     report.show("c_attn query chunk", query)
 
+    # @step trap: reshape gives same shape, different values than transpose
+    report.section("trap")
+    wrong = reshape_trap(c_attn)
+    report.show("reshape (wrong) as Linear", wrong)
+    report.scalar("transpose vs reshape", max_abs_diff(as_linear, wrong))
+
     # @step remap: HF layout -> TorchTwins Linear names
     report.section("remap")
     restored_state = hf_to_ours(hf, cfg)
@@ -247,3 +298,40 @@ def run_remap(preset: Preset) -> None:
     report.show("restored logits", restored)
     # ~0 means transpose + QKV split + renames preserved every weight.
     report.scalar("max abs diff", max_abs_diff(fresh, restored))
+
+    # @step openai: bare keys, tied lm_head->wte, same logits as tied HF
+    report.section("openai")
+    # Public OpenAI GPT-2 ties the output projection to wte. Mirror that before
+    # stripping the HF ``transformer.`` prefix so the omitted lm_head still
+    # round-trips.
+    hf_tied = dict(hf)
+    hf_tied["lm_head.weight"] = hf_tied["transformer.wte.weight"].contiguous()
+    tied_state = hf_to_ours(hf_tied, cfg)
+    torch.manual_seed(preset.seed + 2)
+    tied_model = GPTModel(cfg)
+    tied_model.eval()
+    apply_state(tied_model, tied_state)
+    with torch.no_grad():
+        tied_logits = tied_model(prompt)
+    report.show("tied logits", tied_logits)
+
+    openai = to_openai_keys(hf_tied)
+    report.count("openai keys", len(openai))
+    report.text("lm_head omitted", "true" if "lm_head.weight" not in openai else "false")
+    report.text(
+        "bare c_attn", "h.0.attn.c_attn.weight" if "h.0.attn.c_attn.weight" in openai else "missing"
+    )
+    openai_state = hf_to_ours(openai, cfg)
+    report.scalar(
+        "tied out_head vs wte",
+        max_abs_diff(openai_state["out_head.weight"], openai_state["tok_emb.weight"]),
+    )
+
+    torch.manual_seed(preset.seed + 3)
+    openai_model = GPTModel(cfg)
+    openai_model.eval()
+    apply_state(openai_model, openai_state)
+    with torch.no_grad():
+        openai_logits = openai_model(prompt)
+    report.show("openai logits", openai_logits)
+    report.scalar("openai max abs diff", max_abs_diff(tied_logits, openai_logits))

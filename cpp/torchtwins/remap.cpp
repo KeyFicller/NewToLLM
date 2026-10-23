@@ -267,6 +267,25 @@ std::vector<std::string> audit_shapes(const torch::nn::Module& model,
   return bad;
 }
 
+// @twin audit_dtypes
+std::vector<std::string> audit_dtypes(const torch::nn::Module& model,
+                                      const std::unordered_map<std::string, torch::Tensor>& state) {
+  // @step diff: names whose dtype or device != Parameter
+  // Keys and shapes can match while a checkpoint saved in float16 (or on
+  // another device) still differs. copy_() would cast / transfer mid-loop
+  // and leave earlier parameters already overwritten — preflight first.
+  std::vector<std::string> bad;
+  for (const auto& item : model.named_parameters()) {
+    const auto& tensor = state.at(item.key());
+    const auto& param = item.value();
+    if (tensor.dtype() != param.dtype() || tensor.device() != param.device()) {
+      bad.push_back(item.key());
+    }
+  }
+  std::ranges::sort(bad);
+  return bad;
+}
+
 // @twin apply_state
 void apply_state(torch::nn::Module& model,
                  const std::unordered_map<std::string, torch::Tensor>& state) {
@@ -308,6 +327,11 @@ void apply_state(torch::nn::Module& model,
       details += "]";
     }
     throw std::runtime_error("remap shape mismatch; " + details);
+  }
+  // @step dtypes: refuse dtype/device mismatches before any copy_
+  const auto bad_dtypes = audit_dtypes(model, state);
+  if (!bad_dtypes.empty()) {
+    throw std::runtime_error("remap dtype/device mismatch; " + join_keys(bad_dtypes));
   }
   // @step apply: copy_ each Parameter by dotted name
   {
@@ -469,6 +493,37 @@ void run_remap(const Preset& preset) {
     }
   }
   report::scalar("probe unchanged", max_abs_diff(probe_before, probe_after));
+
+  // @step dtypes: same keys+shapes, wrong dtype must refuse before any copy_
+  report::section("dtypes");
+  // Simulate a float16 checkpoint slot: shape matches, copy_ would silently
+  // cast into the float32 Parameter and leave earlier slots already written.
+  auto mistyped = restored_state;
+  mistyped["tok_emb.weight"] = mistyped.at("tok_emb.weight").to(torch::kFloat16);
+  auto bad_dtypes = audit_dtypes(*other, mistyped);
+  report::text("bad dtypes", join_keys(bad_dtypes));
+  torch::Tensor probe_dtype_before;
+  for (const auto& item : other->named_parameters()) {
+    if (item.key() == "pos_emb.weight") {
+      probe_dtype_before = item.value().detach().clone();
+      break;
+    }
+  }
+  bool dtype_rejected = false;
+  try {
+    apply_state(*other, mistyped);
+  } catch (const std::runtime_error&) {
+    dtype_rejected = true;
+  }
+  report::text("dtype rejects", dtype_rejected ? "true" : "false");
+  torch::Tensor probe_dtype_after;
+  for (const auto& item : other->named_parameters()) {
+    if (item.key() == "pos_emb.weight") {
+      probe_dtype_after = item.value();
+      break;
+    }
+  }
+  report::scalar("dtype probe unchanged", max_abs_diff(probe_dtype_before, probe_dtype_after));
 
   // @step openai: bare keys, tied lm_head->wte, same logits as tied HF
   report::section("openai");

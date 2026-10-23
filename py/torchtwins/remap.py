@@ -16,8 +16,9 @@ layout:
 CI never downloads the 124M file: we build a **synthetic** HF-shaped state dict
 from our own weights (real names + Conv1D shapes), remap it back, then deepen
 with (a) a reshape-vs-transpose trap, (b) an OpenAI bare-key + tied-head
-round-trip, (c) a strict missing/unexpected-key audit that fails closed, and
-(d) a shape-mismatch preflight so a wrong Conv1D layout never half-loads.
+round-trip, (c) a strict missing/unexpected-key audit that fails closed,
+(d) a shape-mismatch preflight so a wrong Conv1D layout never half-loads, and
+(e) a dtype/device preflight so a silent ``copy_`` cast never half-loads.
 The remapping math is the same as loading a real GPT-2 checkpoint.
 """
 
@@ -244,6 +245,20 @@ def audit_shapes(model: nn.Module, state: dict[str, torch.Tensor]) -> list[str]:
     return sorted(bad)
 
 
+# @twin audit_dtypes
+def audit_dtypes(model: nn.Module, state: dict[str, torch.Tensor]) -> list[str]:
+    # @step diff: names whose dtype or device != Parameter
+    # Keys and shapes can match while a checkpoint saved in float16 (or on
+    # another device) still differs. ``copy_`` would cast / transfer mid-loop
+    # and leave earlier parameters already overwritten — preflight first.
+    bad: list[str] = []
+    for name, param in model.named_parameters():
+        tensor = state[name]
+        if tensor.dtype != param.dtype or tensor.device != param.device:
+            bad.append(name)
+    return sorted(bad)
+
+
 # @twin apply_state
 def apply_state(model: nn.Module, state: dict[str, torch.Tensor]) -> None:
     # @step audit: fail closed unless key sets match exactly
@@ -260,6 +275,18 @@ def apply_state(model: nn.Module, state: dict[str, torch.Tensor]) -> None:
                 details.append(f"{name}: got {tuple(state[name].shape)} want {tuple(param.shape)}")
         msg = "remap shape mismatch; " + "; ".join(details)
         raise ValueError(msg)
+    # @step dtypes: refuse dtype/device mismatches before any copy_
+    bad_dtypes = audit_dtypes(model, state)
+    if bad_dtypes:
+        details = []
+        for name, param in model.named_parameters():
+            if name in bad_dtypes:
+                tensor = state[name]
+                details.append(
+                    f"{name}: got {tensor.dtype}/{tensor.device} want {param.dtype}/{param.device}"
+                )
+        msg = "remap dtype/device mismatch; " + "; ".join(details)
+        raise TypeError(msg)
     # @step apply: copy_ each Parameter by dotted name
     with torch.no_grad():
         for name, param in model.named_parameters():
@@ -381,6 +408,23 @@ def run_remap(preset: Preset) -> None:
         shape_rejected = True
     report.text("shape rejects", "true" if shape_rejected else "false")
     report.scalar("probe unchanged", max_abs_diff(probe_before, other.pos_emb.weight))
+
+    # @step dtypes: same keys+shapes, wrong dtype must refuse before any copy_
+    report.section("dtypes")
+    # Simulate a float16 checkpoint slot: shape matches, copy_ would silently
+    # cast into the float32 Parameter and leave earlier slots already written.
+    mistyped = dict(restored_state)
+    mistyped["tok_emb.weight"] = mistyped["tok_emb.weight"].to(torch.float16)
+    bad_dtypes = audit_dtypes(other, mistyped)
+    report.text("bad dtypes", ",".join(bad_dtypes) if bad_dtypes else "none")
+    probe_dtype_before = other.pos_emb.weight.detach().clone()
+    dtype_rejected = False
+    try:
+        apply_state(other, mistyped)
+    except TypeError:
+        dtype_rejected = True
+    report.text("dtype rejects", "true" if dtype_rejected else "false")
+    report.scalar("dtype probe unchanged", max_abs_diff(probe_dtype_before, other.pos_emb.weight))
 
     # @step openai: bare keys, tied lm_head->wte, same logits as tied HF
     report.section("openai")

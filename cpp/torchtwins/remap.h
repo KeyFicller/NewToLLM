@@ -29,6 +29,8 @@ namespace torchtwins {
     const std::unordered_map<std::string, torch::Tensor>& hf, const GPTConfig& cfg);
 [[nodiscard]] std::pair<std::vector<std::string>, std::vector<std::string>> audit_keys(
     const torch::nn::Module& model, const std::unordered_map<std::string, torch::Tensor>& state);
+[[nodiscard]] std::vector<std::string> audit_shapes(
+    const torch::nn::Module& model, const std::unordered_map<std::string, torch::Tensor>& state);
 void apply_state(torch::nn::Module& model,
                  const std::unordered_map<std::string, torch::Tensor>& state);
 void run_remap(const Preset& preset);

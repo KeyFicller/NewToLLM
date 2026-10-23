@@ -22,7 +22,7 @@ LESSON_TITLES: dict[str, tuple[str, str]] = {
     "finetune": ("07", "微调：把 GPT 变成垃圾短信分类器"),
     "checkpoint": ("08", "检查点：保存权重、装回新模型、logits 复原"),
     "crossload": ("09", "跨运行时：便携 (names, tensors) pickle 桥"),
-    "remap": ("10", "HF/OpenAI：Conv1D、c_attn、键/形/dtype 严格审计"),
+    "remap": ("10", "HF/OpenAI：Conv1D、c_attn、绑定 lm_head、键/形/dtype 审计"),
 }
 
 NOTES: dict[str, str] = {
@@ -58,13 +58,14 @@ NOTES: dict[str, str] = {
     "remap.to_openai_keys": "剥掉 `transformer.` 前缀，并丢掉 `lm_head`（OpenAI 发布时绑到 `wte`）。",
     "remap.from_openai_keys": "若已是 HF 形则原样返回；否则给裸名加上 `transformer.`，`lm_head` 保持顶层。",
     "remap.ours_to_hf": "名字对照：`tok_emb`→`wte`，`trf_blocks.N.att`→`transformer.h.N.attn`，`ff.layers.0/2`→`mlp.c_fc/c_proj`，`scale/shift`→`weight/bias`。",
-    "remap.hf_to_ours": "装回时：先 `from_openai_keys` 归一化，再 Conv1D 转置、拆 `c_attn`、改名。缺 `lm_head.weight` 时回退到 `wte`（权重绑定）。",
+    "remap.resolve_lm_head": "装回输出投影的唯一入口：有 `lm_head.weight` 就用它，否则回退到 `transformer.wte.weight`（OpenAI / 权重绑定发布）。只接受 HF 归一化后的键。",
+    "remap.hf_to_ours": "装回时：先 `from_openai_keys` 归一化，再 Conv1D 转置、拆 `c_attn`、改名；输出头走 `resolve_lm_head`（显式或绑定 wte）。",
     "remap.audit_keys": "对比模型 `named_parameters()` 与 state 的键集合，返回排序后的 missing / unexpected。缺键会留下随机初始化；多余键通常是布局/前缀错误。",
     "remap.audit_shapes": "键对上之后再比 `tensor.shape` 与 `Parameter.shape`；返回排序无关的坏名列表。忘了 Conv1D 转置时键仍对、形不对。",
     "remap.audit_dtypes": "键和形都对之后再比 `dtype` / `device`；返回排序无关的坏名列表。float16 档装进 float32 参数时，`copy_` 会静默转型。",
     "remap.apply_state": "先 `audit_keys`，再 `audit_shapes`，再 `audit_dtypes`；任一失败立刻抛错（fail closed），绝不部分 `copy_`。",
     "remap.max_abs_diff": "逐元素最大绝对差；往返成功时应 ≈ 0，reshape 陷阱应明显大于 0。",
-    "remap.run_remap": "tiny 预设默认 `qkv_bias=False`，本课强制 `True`。流程：HF 往返 → reshape 陷阱 → 装回 → 缺键/多余键严格拒绝 → 故意改形再拒绝（probe 不变）→ 故意改 dtype 再拒绝（probe 不变）→ OpenAI 无前缀 + 绑定 lm_head 再往返。",
+    "remap.run_remap": "tiny 预设默认 `qkv_bias=False`，本课强制 `True`。流程：HF 往返 → reshape 陷阱 → 装回 → 缺键/多余键严格拒绝 → 故意改形再拒绝（probe 不变）→ 故意改 dtype 再拒绝（probe 不变）→ tie（untied vs tied 前向对照 + resolve omit 回退）→ OpenAI 无前缀再往返。",
 }
 
 STEP_NOTES: dict[str, str] = {
@@ -225,7 +226,9 @@ STEP_NOTES: dict[str, str] = {
     "remap.hf_to_ours.require": "目标模型也必须 `qkv_bias=True`。",
     "remap.hf_to_ours.embed": "`wte`/`wpe` → `tok_emb`/`pos_emb`。",
     "remap.hf_to_ours.layers": "先 `conv1d_to_linear` 再 `split_qkv`；bias 只 `chunk`（本来就是向量）。",
-    "remap.hf_to_ours.head": "Python `dict.get`；C++ `find` 后回退 `wte`。",
+    "remap.resolve_lm_head.prefer": "看见 `lm_head.weight` 就返回它（HF 常同时存一份，即便数值等于 wte）。",
+    "remap.resolve_lm_head.fallback": "缺键时用 `transformer.wte.weight`——这就是共享词嵌入 / 权重绑定的装回语义。",
+    "remap.hf_to_ours.head": "两边都调用 `resolve_lm_head`，不再手写 `dict.get` / `find`。",
     "remap.audit_keys.diff": "两边都对 expected/state 做集合差并 `sorted`；C++ 用 `unordered_set` + `std::ranges::sort`。",
     "remap.audit_shapes.diff": "逐参数比 sizes；C++ 用 `tensor.sizes() != param.sizes()`。",
     "remap.audit_dtypes.diff": "逐参数比 `dtype` 与 `device`；C++ 用 `tensor.dtype() != param.dtype()` / `device()`。",
@@ -237,7 +240,8 @@ STEP_NOTES: dict[str, str] = {
     "remap.run_remap.build": "`dataclasses.replace(..., qkv_bias=True)` → 拷贝 struct 再改字段。",
     "remap.run_remap.pack": "打印 `c_attn` 的 Conv1D 形、转成 Linear 后的形、以及 query 分块，把转置/拆分看见。",
     "remap.run_remap.trap": "`transpose vs reshape` 应明显大于 0——证明不能用 reshape 替代转置。",
-    "remap.run_remap.openai": "合成 OpenAI 布局（无前缀、无 lm_head）→ remap → `out_head` 等于 `wte`，logits 与绑定参考对齐。",
+    "remap.run_remap.tie": "`untied out_head vs tok_emb` 应 > 0；强制 `lm_head=wte` 后 `tied out_head vs tok_emb` ≈ 0，且 `untied vs tied` 前向差 > 0；omit 后 `resolve`/`out_head` 与 tied 对齐。",
+    "remap.run_remap.openai": "合成 OpenAI 布局（无前缀、无 lm_head）→ remap → `out_head` 等于 `wte`，logits 与 tie 段的绑定参考对齐。",
     "remap.run_remap.remap": "键数应对上；`status: remapped`。",
     "remap.run_remap.scramble": "`seed+1` 搅乱。",
     "remap.run_remap.apply": "`max abs diff ≈ 0` 证明 remap 可逆。",

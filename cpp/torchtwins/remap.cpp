@@ -152,6 +152,21 @@ std::unordered_map<std::string, torch::Tensor> ours_to_hf(
   return hf;
 }
 
+// @twin resolve_lm_head
+torch::Tensor resolve_lm_head(const std::unordered_map<std::string, torch::Tensor>& hf) {
+  // @step prefer: explicit lm_head.weight when the checkpoint stored it
+  // OpenAI GPT-2 (and many "weight-tied" releases) share the input embedding
+  // with the final projection and simply omit lm_head.weight. HuggingFace may
+  // store both tensors even when they hold the same values. Call only on
+  // HF-normalized keys (after from_openai_keys).
+  const auto head_it = hf.find("lm_head.weight");
+  if (head_it != hf.end()) {
+    return head_it->second;
+  }
+  // @step fallback: tied / shared-embedding releases omit it — use wte
+  return hf.at("transformer.wte.weight");
+}
+
 // @twin hf_to_ours
 std::unordered_map<std::string, torch::Tensor> hf_to_ours(
     const std::unordered_map<std::string, torch::Tensor>& hf_in, const GPTConfig& cfg) {
@@ -195,13 +210,11 @@ std::unordered_map<std::string, torch::Tensor> hf_to_ours(
     ours.emplace(ours_prefix + ".ff.layers.2.bias",
                  hf.at(hf_prefix + ".mlp.c_proj.bias").contiguous());
   }
-  // @step head: ln_f + lm_head (fall back to wte when tied / missing)
+  // @step head: ln_f + resolve_lm_head (explicit or tied wte fallback)
   ours.emplace("final_norm.scale", hf.at("transformer.ln_f.weight").contiguous());
   ours.emplace("final_norm.shift", hf.at("transformer.ln_f.bias").contiguous());
-  // OpenAI often ties lm_head to wte and omits lm_head.weight; HF may store both.
-  const auto head_it = hf.find("lm_head.weight");
-  const auto& head = head_it != hf.end() ? head_it->second : hf.at("transformer.wte.weight");
-  ours.emplace("out_head.weight", head.contiguous());
+  // Shared-embedding story: prefer lm_head, else reuse wte (OpenAI omit).
+  ours.emplace("out_head.weight", resolve_lm_head(hf).contiguous());
   return ours;
 }
 
@@ -525,14 +538,20 @@ void run_remap(const Preset& preset) {
   }
   report::scalar("dtype probe unchanged", max_abs_diff(probe_dtype_before, probe_dtype_after));
 
-  // @step openai: bare keys, tied lm_head->wte, same logits as tied HF
-  report::section("openai");
-  // Public OpenAI GPT-2 ties the output projection to wte. Mirror that before
-  // stripping the HF ``transformer.`` prefix so the omitted lm_head still
-  // round-trips.
+  // @step tie: shared embedding — untied vs tied lm_head, resolve fallback
+  report::section("tie");
+  // Untied pack keeps an independent out_head; tying is not a no-op rename.
+  report::scalar("untied out_head vs tok_emb",
+                 max_abs_diff(restored_state.at("out_head.weight"),
+                              restored_state.at("tok_emb.weight")));
+  // Force the weight-tied layout: lm_head holds the same values as wte.
   auto hf_tied = hf;
   hf_tied["lm_head.weight"] = hf_tied.at("transformer.wte.weight").contiguous();
+  report::scalar("resolve tied vs wte", max_abs_diff(resolve_lm_head(hf_tied),
+                                                     hf_tied.at("transformer.wte.weight")));
   auto tied_state = hf_to_ours(hf_tied, cfg);
+  report::scalar("tied out_head vs tok_emb",
+                 max_abs_diff(tied_state.at("out_head.weight"), tied_state.at("tok_emb.weight")));
   torch::manual_seed(preset.seed + 2);
   GPTModel tied_model(cfg);
   tied_model->eval();
@@ -543,7 +562,22 @@ void run_remap(const Preset& preset) {
     tied_logits = tied_model(prompt);
   }
   report::show("tied logits", tied_logits);
+  // Forward must move when the head is tied to the embedding.
+  report::scalar("untied vs tied", max_abs_diff(restored, tied_logits));
+  // Omit lm_head: resolve_lm_head falls back to wte; remapped head matches tied.
+  auto hf_omitted = hf_tied;
+  hf_omitted.erase("lm_head.weight");
+  report::scalar("resolve omitted vs wte",
+                 max_abs_diff(resolve_lm_head(hf_omitted),
+                              hf_omitted.at("transformer.wte.weight")));
+  auto omitted_state = hf_to_ours(hf_omitted, cfg);
+  report::scalar("omitted out_head vs tied",
+                 max_abs_diff(omitted_state.at("out_head.weight"),
+                              tied_state.at("out_head.weight")));
 
+  // @step openai: bare keys (no transformer. prefix); same tied fallback
+  report::section("openai");
+  // Strip to OpenAI bare names; lm_head stays omitted and resolve falls back.
   auto openai = to_openai_keys(hf_tied);
   report::count("openai keys", static_cast<int64_t>(openai.size()));
   report::text("lm_head omitted", openai.contains("lm_head.weight") ? "false" : "true");

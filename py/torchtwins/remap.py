@@ -15,10 +15,12 @@ layout:
 
 CI never downloads the 124M file: we build a **synthetic** HF-shaped state dict
 from our own weights (real names + Conv1D shapes), remap it back, then deepen
-with (a) a reshape-vs-transpose trap, (b) an OpenAI bare-key + tied-head
-round-trip, (c) a strict missing/unexpected-key audit that fails closed,
-(d) a shape-mismatch preflight so a wrong Conv1D layout never half-loads, and
-(e) a dtype/device preflight so a silent ``copy_`` cast never half-loads.
+with (a) a reshape-vs-transpose trap, (b) a tied ``lm_head``↔``wte`` shared-
+embedding load narrative (untied vs tied forward check + omit fallback),
+(c) an OpenAI bare-key round-trip that reuses that fallback, (d) a strict
+missing/unexpected-key audit that fails closed, (e) a shape-mismatch preflight
+so a wrong Conv1D layout never half-loads, and (f) a dtype/device preflight so
+a silent ``copy_`` cast never half-loads.
 The remapping math is the same as loading a real GPT-2 checkpoint.
 """
 
@@ -167,6 +169,22 @@ def ours_to_hf(ours: dict[str, torch.Tensor], cfg: GPTConfig) -> dict[str, torch
     return hf
 
 
+# @twin resolve_lm_head
+def resolve_lm_head(hf: dict[str, torch.Tensor]) -> torch.Tensor:
+    """Pick the output projection: explicit ``lm_head`` or tied ``wte`` fallback.
+
+    OpenAI GPT-2 (and many "weight-tied" releases) share the input embedding
+    with the final projection and simply omit ``lm_head.weight``. HuggingFace
+    may store both tensors even when they hold the same values. Call this only
+    on HF-normalized keys (after ``from_openai_keys``).
+    """
+    # @step prefer: explicit lm_head.weight when the checkpoint stored it
+    if "lm_head.weight" in hf:
+        return hf["lm_head.weight"]
+    # @step fallback: tied / shared-embedding releases omit it — use wte
+    return hf["transformer.wte.weight"]
+
+
 # @twin hf_to_ours
 def hf_to_ours(hf: dict[str, torch.Tensor], cfg: GPTConfig) -> dict[str, torch.Tensor]:
     """Remap HF or OpenAI GPT-2 keys into TorchTwins Linear names/shapes."""
@@ -210,12 +228,11 @@ def hf_to_ours(hf: dict[str, torch.Tensor], cfg: GPTConfig) -> dict[str, torch.T
             hf[f"{hf_prefix}.mlp.c_proj.weight"]
         )
         ours[f"{ours_prefix}.ff.layers.2.bias"] = hf[f"{hf_prefix}.mlp.c_proj.bias"].contiguous()
-    # @step head: ln_f + lm_head (fall back to wte when tied / missing)
+    # @step head: ln_f + resolve_lm_head (explicit or tied wte fallback)
     ours["final_norm.scale"] = hf["transformer.ln_f.weight"].contiguous()
     ours["final_norm.shift"] = hf["transformer.ln_f.bias"].contiguous()
-    # OpenAI often ties lm_head to wte and omits lm_head.weight; HF may store both.
-    head = hf.get("lm_head.weight", hf["transformer.wte.weight"])
-    ours["out_head.weight"] = head.contiguous()
+    # Shared-embedding story: prefer lm_head, else reuse wte (OpenAI omit).
+    ours["out_head.weight"] = resolve_lm_head(hf).contiguous()
     return ours
 
 
@@ -426,14 +443,25 @@ def run_remap(preset: Preset) -> None:
     report.text("dtype rejects", "true" if dtype_rejected else "false")
     report.scalar("dtype probe unchanged", max_abs_diff(probe_dtype_before, other.pos_emb.weight))
 
-    # @step openai: bare keys, tied lm_head->wte, same logits as tied HF
-    report.section("openai")
-    # Public OpenAI GPT-2 ties the output projection to wte. Mirror that before
-    # stripping the HF ``transformer.`` prefix so the omitted lm_head still
-    # round-trips.
+    # @step tie: shared embedding — untied vs tied lm_head, resolve fallback
+    report.section("tie")
+    # Untied pack keeps an independent out_head; tying is not a no-op rename.
+    report.scalar(
+        "untied out_head vs tok_emb",
+        max_abs_diff(restored_state["out_head.weight"], restored_state["tok_emb.weight"]),
+    )
+    # Force the weight-tied layout: lm_head holds the same values as wte.
     hf_tied = dict(hf)
     hf_tied["lm_head.weight"] = hf_tied["transformer.wte.weight"].contiguous()
+    report.scalar(
+        "resolve tied vs wte",
+        max_abs_diff(resolve_lm_head(hf_tied), hf_tied["transformer.wte.weight"]),
+    )
     tied_state = hf_to_ours(hf_tied, cfg)
+    report.scalar(
+        "tied out_head vs tok_emb",
+        max_abs_diff(tied_state["out_head.weight"], tied_state["tok_emb.weight"]),
+    )
     torch.manual_seed(preset.seed + 2)
     tied_model = GPTModel(cfg)
     tied_model.eval()
@@ -441,7 +469,23 @@ def run_remap(preset: Preset) -> None:
     with torch.no_grad():
         tied_logits = tied_model(prompt)
     report.show("tied logits", tied_logits)
+    # Forward must move when the head is tied to the embedding.
+    report.scalar("untied vs tied", max_abs_diff(restored, tied_logits))
+    # Omit lm_head: resolve_lm_head falls back to wte; remapped head matches tied.
+    hf_omitted = {name: value for name, value in hf_tied.items() if name != "lm_head.weight"}
+    report.scalar(
+        "resolve omitted vs wte",
+        max_abs_diff(resolve_lm_head(hf_omitted), hf_omitted["transformer.wte.weight"]),
+    )
+    omitted_state = hf_to_ours(hf_omitted, cfg)
+    report.scalar(
+        "omitted out_head vs tied",
+        max_abs_diff(omitted_state["out_head.weight"], tied_state["out_head.weight"]),
+    )
 
+    # @step openai: bare keys (no transformer. prefix); same tied fallback
+    report.section("openai")
+    # Strip to OpenAI bare names; lm_head stays omitted and resolve falls back.
     openai = to_openai_keys(hf_tied)
     report.count("openai keys", len(openai))
     report.text("lm_head omitted", "true" if "lm_head.weight" not in openai else "false")
